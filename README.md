@@ -1,3 +1,8 @@
+# go-ratelimiter
+
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 ##  Limiter
 
 This is a generic middleware to rate-limit HTTP requests
