@@ -1,5 +1,8 @@
 # go-ratelimiter
 
+<!-- README-OVERVIEW-IMAGE -->
+![Project overview](docs/readme-overview.svg)
+
 ## Overview
 
 `garethpaul/go-ratelimiter` is a Go project. A golang rate limiter.
@@ -69,4 +72,3 @@ Keep changes small and tied to the project that is already present in this repos
 Prior README summary:
 
 > go-ratelimiter <!-- README-OVERVIEW-IMAGE --> Limiter This is a generic middleware to rate-limit HTTP requests Tutorial Features 1. Rate-limit by request's remote IP, path, methods, custom headers, & basic auth usernames. 2. Each request handler can be rate-limited individually.
-
