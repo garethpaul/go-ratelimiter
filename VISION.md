@@ -38,7 +38,6 @@ Canonical security policy and reporting:
 
 - [`SECURITY.md`](SECURITY.md)
 
-
 Rate limiting is often part of abuse prevention. Changes should be careful with
 trusted proxy headers, basic-auth usernames, and header-derived keys so callers
 do not accidentally trust attacker-controlled values.
