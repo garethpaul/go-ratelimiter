@@ -38,7 +38,7 @@ Rate limiting is often part of abuse prevention. Changes should be careful with
 trusted proxy headers, basic-auth usernames, and header-derived keys so callers
 do not accidentally trust attacker-controlled values.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Remote storage dependencies as the default path
 - Header/IP trust changes without documentation
