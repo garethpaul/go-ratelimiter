@@ -20,12 +20,11 @@ Priority:
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
 - Maintain clear examples for proxy-aware IP lookup
+- Keep the Go module, `scripts/check-baseline.sh`, and behavior tests passing
 
 Next priorities:
 
-- Add tests for key derivation, token-bucket behavior, and proxy headers
 - Document concurrency and cleanup behavior
-- Add Go module metadata if the package is revived for modern tooling
 - Clarify error responses and extension points
 
 Contribution rules:
@@ -44,6 +43,10 @@ Canonical security policy and reporting:
 Rate limiting is often part of abuse prevention. Changes should be careful with
 trusted proxy headers, basic-auth usernames, and header-derived keys so callers
 do not accidentally trust attacker-controlled values.
+
+Current baseline: `go.mod` and `go.sum` define the module, `make check` runs
+`scripts/check-baseline.sh`, and tests cover default key derivation,
+proxy-aware IP lookup, and 429 responses when a bucket is empty.
 
 ## What We Will Not Merge (For Now)
 

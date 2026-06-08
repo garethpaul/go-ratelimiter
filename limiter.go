@@ -2,13 +2,14 @@
 package limiter
 
 import (
-  "net/http"
-  "strconv"
-  "strings"
-  "time"
-  "limiter/config"
-  "limiter/errors"
-  "limiter/libstring"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/garethpaul/go-ratelimiter/config"
+	"github.com/garethpaul/go-ratelimiter/errors"
+	"github.com/garethpaul/go-ratelimiter/libstring"
 )
 
 // NewLimiter is a convenience function to config.NewLimiter.

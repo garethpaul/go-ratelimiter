@@ -11,42 +11,55 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 
 ## Repository Contents
 
+- `CHANGES.md` - concise history of maintenance changes
+- `Makefile` - local verification entry point
 - `README.md` - project overview and local usage notes
 - `config` - source or example code
 - `errors` - source or example code
+- `go.mod` and `go.sum` - Go module dependency metadata
 - `libstring` - source or example code
+- `scripts/check-baseline.sh` - Go formatting, tests, import, and documentation guardrails
 - `SECURITY.md` - security reporting and disclosure guidance
 - `VISION.md` - project direction and maintenance guardrails
 
 Additional scan context:
 
 - Source directories: config, errors, libstring
-- Dependency and build manifests: none detected
-- Entry points or build surfaces: none detected
-- Test-looking files: no obvious test files detected
+- Dependency and build manifests: go.mod, go.sum
+- Entry points or build surfaces: `make check`, `go test ./...`
+- Test-looking files: limiter_test.go, libstring/libstring_test.go
 
 ## Getting Started
 
 ### Prerequisites
 
 - Git
+- Go 1.25 or a compatible modern Go toolchain
 
 ### Setup
 
 ```bash
 git clone https://github.com/garethpaul/go-ratelimiter.git
 cd go-ratelimiter
+go mod download
 ```
 
 The setup commands above are derived from repository files. Legacy mobile, Python, or JavaScript samples may require older SDKs or package versions than a modern workstation uses by default.
 
 ## Running or Using the Project
 
-- No single runtime entry point was identified. Start by reading the source files and manifests listed above.
+- Import the package as `github.com/garethpaul/go-ratelimiter`.
+- Use `LimitFuncHandler` or `LimitHandler` to wrap an HTTP handler with an in-memory token-bucket limiter.
 
 ## Testing and Verification
 
-- No dedicated automated test command was identified from the checked-in files. Verify changes by running the relevant build or manually exercising the sample.
+Run the baseline:
+
+```bash
+make check
+```
+
+The baseline runs `go test ./...`, verifies Go formatting, checks module-qualified imports, and ensures the behavior tests for key derivation, proxy-aware IP lookup, and 429 responses remain in place.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -57,11 +70,13 @@ When the required SDK or runtime is unavailable, use static checks and source re
 ## Security and Privacy Notes
 
 - Review changes touching authentication or token handling; examples from the scan include config/config.go, limiter.go.
+- Proxy header behavior is caller-configured through `Limiter.IPLookups`; do not change lookup order semantics without tests and documentation.
 
 ## Maintenance Notes
 
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- Run `make check` before pushing limiter behavior, config, or import changes.
 
 ## Contributing
 
