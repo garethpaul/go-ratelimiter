@@ -59,7 +59,7 @@ Run the baseline:
 make check
 ```
 
-The baseline runs `go test ./...`, verifies Go formatting, checks module-qualified imports, and ensures the behavior tests for key derivation, proxy-aware IP lookup, and 429 responses remain in place.
+The baseline runs `go test ./...`, verifies Go formatting, checks module-qualified imports, and ensures the behavior tests for key derivation, proxy-aware IP lookup, header-value matching, and 429 responses remain in place.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -71,6 +71,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - Review changes touching authentication or token handling; examples from the scan include config/config.go, limiter.go.
 - Proxy header behavior is caller-configured through `Limiter.IPLookups`; do not change lookup order semantics without tests and documentation.
+- Configured header values only contribute keys when the request header contains one of those configured values.
 
 ## Maintenance Notes
 

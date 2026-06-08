@@ -27,7 +27,8 @@ for path in \
   "errors/errors.go" \
   "libstring/libstring.go" \
   "libstring/libstring_test.go" \
-  "docs/plans/2026-06-08-go-module-baseline.md"; do
+  "docs/plans/2026-06-08-go-module-baseline.md" \
+  "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
 
@@ -51,6 +52,9 @@ fi
 
 if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysCanPreferForwardedFor" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysHeaderValuesRequireConfiguredMatch" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
@@ -71,6 +75,11 @@ fi
 
 if ! grep -Fq "status: completed" "$PLAN"; then
   printf '%s\n' "Plan must be marked completed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$ROOT_DIR/docs/plans/2026-06-08-header-value-matching.md"; then
+  printf '%s\n' "Header value matching plan must be marked completed." >&2
   exit 1
 fi
 

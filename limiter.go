@@ -58,16 +58,17 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 		// Limit by HTTP methods and HTTP headers+values and Basic Auth credentials.
 		if libstring.StringInSlice(limiter.Methods, r.Method) {
 			for headerKey, headerValues := range limiter.Headers {
-				if (headerValues == nil || len(headerValues) <= 0) && r.Header.Get(headerKey) != "" {
+				matchedHeaderValues := matchingHeaderValues(r, headerKey, headerValues)
+				if (headerValues == nil || len(headerValues) <= 0) && len(matchedHeaderValues) > 0 {
 					// If header values are empty, rate-limit all request with headerKey.
 					username, _, ok := r.BasicAuth()
 					if ok && libstring.StringInSlice(limiter.BasicAuthUsers, username) {
 						sliceKeys = append(sliceKeys, []string{remoteIP, path, r.Method, headerKey, username})
 					}
 
-				} else if len(headerValues) > 0 && r.Header.Get(headerKey) != "" {
+				} else if len(headerValues) > 0 {
 					// If header values are not empty, rate-limit all request with headerKey and headerValues.
-					for _, headerValue := range headerValues {
+					for _, headerValue := range matchedHeaderValues {
 						username, _, ok := r.BasicAuth()
 						if ok && libstring.StringInSlice(limiter.BasicAuthUsers, username) {
 							sliceKeys = append(sliceKeys, []string{remoteIP, path, r.Method, headerKey, headerValue, username})
@@ -81,13 +82,14 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 		// Limit by HTTP methods and HTTP headers+values.
 		if libstring.StringInSlice(limiter.Methods, r.Method) {
 			for headerKey, headerValues := range limiter.Headers {
-				if (headerValues == nil || len(headerValues) <= 0) && r.Header.Get(headerKey) != "" {
+				matchedHeaderValues := matchingHeaderValues(r, headerKey, headerValues)
+				if (headerValues == nil || len(headerValues) <= 0) && len(matchedHeaderValues) > 0 {
 					// If header values are empty, rate-limit all request with headerKey.
 					sliceKeys = append(sliceKeys, []string{remoteIP, path, r.Method, headerKey})
 
-				} else if len(headerValues) > 0 && r.Header.Get(headerKey) != "" {
+				} else if len(headerValues) > 0 {
 					// If header values are not empty, rate-limit all request with headerKey and headerValues.
-					for _, headerValue := range headerValues {
+					for _, headerValue := range matchedHeaderValues {
 						sliceKeys = append(sliceKeys, []string{remoteIP, path, r.Method, headerKey, headerValue})
 					}
 				}
@@ -112,13 +114,14 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 	} else if limiter.Headers != nil {
 		// Limit by HTTP headers+values.
 		for headerKey, headerValues := range limiter.Headers {
-			if (headerValues == nil || len(headerValues) <= 0) && r.Header.Get(headerKey) != "" {
+			matchedHeaderValues := matchingHeaderValues(r, headerKey, headerValues)
+			if (headerValues == nil || len(headerValues) <= 0) && len(matchedHeaderValues) > 0 {
 				// If header values are empty, rate-limit all request with headerKey.
 				sliceKeys = append(sliceKeys, []string{remoteIP, path, headerKey})
 
-			} else if len(headerValues) > 0 && r.Header.Get(headerKey) != "" {
+			} else if len(headerValues) > 0 {
 				// If header values are not empty, rate-limit all request with headerKey and headerValues.
-				for _, headerValue := range headerValues {
+				for _, headerValue := range matchedHeaderValues {
 					sliceKeys = append(sliceKeys, []string{remoteIP, path, headerKey, headerValue})
 				}
 			}
@@ -136,6 +139,24 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 	}
 
 	return sliceKeys
+}
+
+func matchingHeaderValues(r *http.Request, headerKey string, headerValues []string) []string {
+	if r.Header.Get(headerKey) == "" {
+		return nil
+	}
+	if len(headerValues) == 0 {
+		return []string{""}
+	}
+
+	requestValues := r.Header.Values(headerKey)
+	matchedValues := make([]string, 0, len(headerValues))
+	for _, headerValue := range headerValues {
+		if libstring.StringInSlice(requestValues, headerValue) {
+			matchedValues = append(matchedValues, headerValue)
+		}
+	}
+	return matchedValues
 }
 
 // SetResponseHeaders configures X-Rate-Limit-Limit and X-Rate-Limit-Duration

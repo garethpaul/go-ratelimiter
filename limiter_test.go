@@ -39,6 +39,55 @@ func TestBuildKeysCanPreferForwardedFor(t *testing.T) {
 	}
 }
 
+func TestBuildKeysHeaderValuesRequireConfiguredMatch(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.Headers = map[string][]string{"X-Plan": {"gold"}}
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Plan", "bronze")
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 0 {
+		t.Fatalf("keys = %#v, want no keys for non-matching header value", keys)
+	}
+}
+
+func TestBuildKeysHeaderValueMatchIncludesConfiguredValue(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.Headers = map[string][]string{"X-Plan": {"gold"}}
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Plan", "gold")
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 1 {
+		t.Fatalf("expected one key set, got %d", len(keys))
+	}
+	if got, want := keys[0], []string{"203.0.113.10", "/limited", "X-Plan", "gold"}; !equalStrings(got, want) {
+		t.Fatalf("keys = %#v, want %#v", got, want)
+	}
+}
+
+func TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.Methods = []string{http.MethodPost}
+	limiter.Headers = map[string][]string{"X-Plan": {"gold"}}
+	request := httptest.NewRequest(http.MethodPost, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Plan", "gold")
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 1 {
+		t.Fatalf("expected one key set, got %d", len(keys))
+	}
+	if got, want := keys[0], []string{"203.0.113.10", "/limited", http.MethodPost, "X-Plan", "gold"}; !equalStrings(got, want) {
+		t.Fatalf("keys = %#v, want %#v", got, want)
+	}
+}
+
 func TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {

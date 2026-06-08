@@ -46,7 +46,8 @@ do not accidentally trust attacker-controlled values.
 
 Current baseline: `go.mod` and `go.sum` define the module, `make check` runs
 `scripts/check-baseline.sh`, and tests cover default key derivation,
-proxy-aware IP lookup, and 429 responses when a bucket is empty.
+proxy-aware IP lookup, configured header-value matching, and 429 responses when
+a bucket is empty.
 
 ## What We Will Not Merge (For Now)
 
