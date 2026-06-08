@@ -1,5 +1,8 @@
 ## Go Rate Limiter Vision
 
+This document explains the current state and direction of the project.
+Project overview and developer docs: [`README.md`](README.md)
+
 Go Rate Limiter is a generic Go middleware for rate-limiting HTTP requests with
 a token-bucket algorithm.
 
