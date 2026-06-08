@@ -44,3 +44,6 @@ do not accidentally trust attacker-controlled values.
 - Header/IP trust changes without documentation
 - API-breaking changes without migration notes
 - Behavior changes without tests
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
