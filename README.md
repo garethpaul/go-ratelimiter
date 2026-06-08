@@ -66,9 +66,3 @@ When the required SDK or runtime is unavailable, use static checks and source re
 ## Contributing
 
 Keep changes small and tied to the project that is already present in this repository. For code changes, document the toolchain used, avoid committing generated dependency directories or local configuration, and update this README when setup or verification steps change.
-
-## Existing Project Notes
-
-Prior README summary:
-
-> go-ratelimiter Limiter This is a generic middleware to rate-limit HTTP requests Tutorial Features 1. Rate-limit by request's remote IP, path, methods, custom headers, & basic auth usernames. 2. Each request handler can be rate-limited individually.
