@@ -25,6 +25,17 @@ func ipAddrFromRemoteAddr(s string) string {
 	return strings.Trim(s, "[]")
 }
 
+func ipAddrFromForwardedFor(s string) string {
+	parts := strings.Split(s, ",")
+	for _, part := range parts {
+		ip := strings.TrimSpace(part)
+		if ip != "" {
+			return ip
+		}
+	}
+	return ""
+}
+
 // RemoteIP finds IP Address given http.Request struct.
 func RemoteIP(ipLookups []string, r *http.Request) string {
 	realIP := r.Header.Get("X-Real-IP")
@@ -35,12 +46,9 @@ func RemoteIP(ipLookups []string, r *http.Request) string {
 			return ipAddrFromRemoteAddr(r.RemoteAddr)
 		}
 		if lookup == "X-Forwarded-For" && forwardedFor != "" {
-			// X-Forwarded-For is potentially a list of addresses separated with ","
-			parts := strings.Split(forwardedFor, ",")
-			for i, p := range parts {
-				parts[i] = strings.TrimSpace(p)
+			if ip := ipAddrFromForwardedFor(forwardedFor); ip != "" {
+				return ip
 			}
-			return parts[0]
 		}
 		if lookup == "X-Real-IP" && realIP != "" {
 			return realIP

@@ -59,6 +59,8 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPSkipsBlankForwardedForEntries" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPFallsBackAfterBlankForwardedFor" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
   exit 1
@@ -69,16 +71,24 @@ if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go"; then
   exit 1
 fi
 
+if ! grep -Fq "func ipAddrFromForwardedFor" "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq "strings.TrimSpace(part)" "$ROOT_DIR/libstring/libstring.go"; then
+  printf '%s\n' "X-Forwarded-For parsing must skip blank entries before deriving keys." >&2
+  exit 1
+fi
+
 if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "make check" "$ROOT_DIR/README.md" ||
-  ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/README.md"; then
+  ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/README.md"; then
   printf '%s\n' "README must document the Go verification baseline." >&2
   exit 1
 fi
 
 if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "Go module" "$ROOT_DIR/VISION.md" ||
-  ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/VISION.md"; then
+  ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/VISION.md"; then
   printf '%s\n' "VISION must describe the current module baseline." >&2
   exit 1
 fi
@@ -95,6 +105,11 @@ fi
 
 if ! grep -Fq "status: completed" "$IPV6_PLAN"; then
   printf '%s\n' "IPv6 RemoteAddr plan must be marked completed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$ROOT_DIR/docs/plans/2026-06-09-forwarded-for-blank-entries.md"; then
+  printf '%s\n' "Forwarded-for blank entry plan must be marked completed." >&2
   exit 1
 fi
 

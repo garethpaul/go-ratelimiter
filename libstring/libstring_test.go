@@ -29,6 +29,30 @@ func TestRemoteIPTrimsForwardedForList(t *testing.T) {
 	}
 }
 
+func TestRemoteIPSkipsBlankForwardedForEntries(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "10.0.0.1:1234"
+	request.Header.Set("X-Forwarded-For", " , 198.51.100.7, 10.0.0.1")
+
+	got := RemoteIP([]string{"X-Forwarded-For"}, request)
+
+	if got != "198.51.100.7" {
+		t.Fatalf("RemoteIP = %q, want first non-empty forwarded IP", got)
+	}
+}
+
+func TestRemoteIPFallsBackAfterBlankForwardedFor(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "10.0.0.1:1234"
+	request.Header.Set("X-Forwarded-For", " , ")
+
+	got := RemoteIP([]string{"X-Forwarded-For", "RemoteAddr"}, request)
+
+	if got != "10.0.0.1" {
+		t.Fatalf("RemoteIP = %q, want fallback RemoteAddr value", got)
+	}
+}
+
 func TestRemoteIPHandlesIPv6RemoteAddr(t *testing.T) {
 	for _, remoteAddr := range []string{"[2001:db8::1]:1234", "2001:db8::1"} {
 		request := httptest.NewRequest("GET", "/", nil)
