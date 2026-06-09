@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-09
+
+- Matched configured header values across all request header values so a blank
+  first value cannot hide a later configured match.
+
 ## 2026-06-08
 
 - Added `make lint`, `make test`, and `make build` aliases so local verification

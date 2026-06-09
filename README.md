@@ -68,7 +68,7 @@ baseline so every local gate entry point runs the same checks. The baseline runs
 ensures the behavior tests for key derivation, proxy-aware IP lookup, blank
 X-Forwarded-For entries, blank X-Real-IP values, malformed proxy IP headers,
 malformed RemoteAddr values, IPv6 RemoteAddr parsing, header-value matching,
-and 429 responses remain in place. Keep the exact guard phrases
+blank first header value matching, and 429 responses remain in place. Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline.
 
@@ -93,6 +93,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Malformed RemoteAddr values are skipped before limiter keys are derived,
   allowing later configured lookup sources to be used.
 - Configured header values only contribute keys when the request header contains one of those configured values.
+- Configured header value matching inspects all request header values, so a
+  blank first header value cannot hide a later configured match.
 
 ## Maintenance Notes
 
@@ -106,6 +108,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   target guardrails.
 - See `docs/plans/2026-06-09-malformed-remote-addr.md` for direct RemoteAddr
   validation.
+- See `docs/plans/2026-06-09-header-blank-value-matching.md` for header value
+  matching with blank leading request values.
 
 ## Contributing
 

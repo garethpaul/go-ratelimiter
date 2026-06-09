@@ -142,14 +142,14 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 }
 
 func matchingHeaderValues(r *http.Request, headerKey string, headerValues []string) []string {
-	if r.Header.Get(headerKey) == "" {
+	requestValues := r.Header.Values(headerKey)
+	if len(requestValues) == 0 {
 		return nil
 	}
 	if len(headerValues) == 0 {
 		return []string{""}
 	}
 
-	requestValues := r.Header.Values(headerKey)
 	matchedValues := make([]string, 0, len(headerValues))
 	for _, headerValue := range headerValues {
 		if libstring.StringInSlice(requestValues, headerValue) {

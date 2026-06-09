@@ -36,6 +36,8 @@ For web services, APIs, sockets, or scraping workflows, prioritize reports invol
 
 Malformed RemoteAddr values should be skipped before limiter keys are derived
 so later configured lookup sources can still be used.
+Configured header value matching should inspect all request header values so a
+blank first header value cannot bypass a later configured match.
 
 ## Dependency and Supply Chain Security
 

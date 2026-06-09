@@ -20,6 +20,7 @@ Priority:
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
+- Preserve configured header matching when a request has a blank first header value
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing
 
@@ -52,6 +53,8 @@ parsing, configured header-value matching, blank X-Forwarded-For entries, blank
 X-Real-IP values, and 429 responses when a bucket is empty. Cases with
 malformed RemoteAddr values and malformed proxy IP headers are skipped before
 limiter keys are derived, allowing later configured lookup sources to be used.
+Configured header matching checks all request values so a blank first header
+value cannot hide a later configured match.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
