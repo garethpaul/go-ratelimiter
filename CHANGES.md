@@ -9,7 +9,8 @@
 - Added tests for default key derivation, proxy-aware IP lookup, header-value matching, and rate-limit rejection behavior.
 - Added IPv6 `RemoteAddr` parsing coverage and switched host:port parsing to
   `net.SplitHostPort`.
-- Skipped malformed `RemoteAddr` values before deriving limiter keys.
+- Skipped malformed `RemoteAddr` values before deriving limiter keys so later
+  configured lookup sources can be used.
 - Skipped blank `X-Forwarded-For` entries before deriving limiter keys.
 - Trimmed `X-Real-IP` values and skipped blank values before deriving limiter
   keys.

@@ -123,3 +123,15 @@ func TestRemoteIPSkipsMalformedRemoteAddr(t *testing.T) {
 		t.Fatalf("RemoteIP = %q, want empty value for malformed RemoteAddr", got)
 	}
 }
+
+func TestRemoteIPFallsBackAfterMalformedRemoteAddr(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "not-an-ip"
+	request.Header.Set("X-Real-IP", "203.0.113.9")
+
+	got := RemoteIP([]string{"RemoteAddr", "X-Real-IP"}, request)
+
+	if got != "203.0.113.9" {
+		t.Fatalf("RemoteIP = %q, want fallback X-Real-IP value", got)
+	}
+}

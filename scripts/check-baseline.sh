@@ -73,6 +73,7 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysSkipsMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
@@ -82,14 +83,16 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPSkipsMalformedForwardedForEntries" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankForwardedFor" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPSkipsMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
   exit 1
 fi
 
 if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go" ||
-  ! grep -Fq "net.ParseIP(host)" "$ROOT_DIR/libstring/libstring.go"; then
-  printf '%s\n' "RemoteAddr parsing must use net.SplitHostPort for host:port values." >&2
+  ! grep -Fq "net.ParseIP(host)" "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq "ipAddrFromRemoteAddr(r.RemoteAddr); ip != \"\"" "$ROOT_DIR/libstring/libstring.go"; then
+  printf '%s\n' "RemoteAddr parsing must use net.SplitHostPort and skip malformed IPs before deriving keys." >&2
   exit 1
 fi
 

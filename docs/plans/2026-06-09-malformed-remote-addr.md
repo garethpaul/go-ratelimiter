@@ -7,13 +7,17 @@ status: completed
 Proxy header values are validated before they become limiter keys, but direct
 `RemoteAddr` fallback values could still pass through as arbitrary strings when
 they were not parseable IP addresses. Malformed direct addresses should behave
-like malformed proxy headers and produce no limiter key.
+like malformed proxy headers: skip the malformed source and allow later
+configured lookup sources to provide the limiter key.
 
 ## Completed Scope
 
 - Validated the parsed `RemoteAddr` host with `net.ParseIP`.
-- Returned an empty IP for malformed direct remote addresses.
-- Added focused tests for direct lookup and `BuildKeys` behavior.
+- Skipped malformed direct remote addresses before deriving limiter keys.
+- Continued to later configured lookup sources after malformed direct remote
+  addresses.
+- Added focused tests for direct lookup, fallback lookup, and `BuildKeys`
+  behavior.
 - Extended the static baseline and docs so the guard remains visible.
 
 ## Verification

@@ -90,7 +90,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   allowing later configured lookup sources to be used.
 - `RemoteAddr` parsing supports IPv4 and IPv6 host:port values before deriving
   limiter keys.
-- Malformed RemoteAddr values are skipped before limiter keys are derived.
+- Malformed RemoteAddr values are skipped before limiter keys are derived,
+  allowing later configured lookup sources to be used.
 - Configured header values only contribute keys when the request header contains one of those configured values.
 
 ## Maintenance Notes

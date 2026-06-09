@@ -51,7 +51,8 @@ and tests cover default key derivation, proxy-aware IP lookup, IPv6 RemoteAddr
 parsing, configured header-value matching, blank X-Forwarded-For entries, blank
 X-Real-IP values, and 429 responses when a bucket is empty. Cases with
 malformed RemoteAddr values and malformed proxy IP headers are skipped before
-limiter keys are derived. Keep the exact guard phrases
+limiter keys are derived, allowing later configured lookup sources to be used.
+Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
 "malformed proxy IP headers".

@@ -51,6 +51,23 @@ func TestBuildKeysSkipsMalformedRemoteAddr(t *testing.T) {
 	}
 }
 
+func TestBuildKeysFallsBackAfterMalformedRemoteAddr(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.IPLookups = []string{"RemoteAddr", "X-Real-IP"}
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "not-an-ip"
+	request.Header.Set("X-Real-IP", "203.0.113.9")
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 1 {
+		t.Fatalf("expected one key set, got %d", len(keys))
+	}
+	if got, want := keys[0], []string{"203.0.113.9", "/limited"}; !equalStrings(got, want) {
+		t.Fatalf("keys = %#v, want %#v", got, want)
+	}
+}
+
 func TestBuildKeysHeaderValuesRequireConfiguredMatch(t *testing.T) {
 	limiter := NewLimiter(10, time.Minute)
 	limiter.Headers = map[string][]string{"X-Plan": {"gold"}}

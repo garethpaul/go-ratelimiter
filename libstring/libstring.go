@@ -54,7 +54,9 @@ func RemoteIP(ipLookups []string, r *http.Request) string {
 
 	for _, lookup := range ipLookups {
 		if lookup == "RemoteAddr" {
-			return ipAddrFromRemoteAddr(r.RemoteAddr)
+			if ip := ipAddrFromRemoteAddr(r.RemoteAddr); ip != "" {
+				return ip
+			}
 		}
 		if lookup == "X-Forwarded-For" && forwardedFor != "" {
 			if ip := ipAddrFromForwardedFor(forwardedFor); ip != "" {
