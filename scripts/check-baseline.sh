@@ -7,6 +7,7 @@ IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-09-ipv6-remote-addr.md"
 REAL_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-09-real-ip-blank-values.md"
 PROXY_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-09-proxy-header-ip-validation.md"
 MAKE_GATES_PLAN="$ROOT_DIR/docs/plans/2026-06-09-make-gate-aliases.md"
+REMOTE_ADDR_PLAN="$ROOT_DIR/docs/plans/2026-06-09-malformed-remote-addr.md"
 
 require_file() {
   path=$1
@@ -36,6 +37,7 @@ for path in \
   "docs/plans/2026-06-09-make-gate-aliases.md" \
   "docs/plans/2026-06-09-proxy-header-ip-validation.md" \
   "docs/plans/2026-06-09-real-ip-blank-values.md" \
+  "docs/plans/2026-06-09-malformed-remote-addr.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -70,6 +72,7 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysHeaderValuesRequireConfiguredMatch" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysSkipsMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
@@ -78,12 +81,14 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPSkipsBlankForwardedForEntries" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPSkipsMalformedForwardedForEntries" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankForwardedFor" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPSkipsMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
   exit 1
 fi
 
-if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go"; then
+if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq "net.ParseIP(host)" "$ROOT_DIR/libstring/libstring.go"; then
   printf '%s\n' "RemoteAddr parsing must use net.SplitHostPort for host:port values." >&2
   exit 1
 fi
@@ -106,6 +111,7 @@ if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "make build" "$ROOT_DIR/README.md" ||
   ! grep -Fq "make check" "$ROOT_DIR/README.md" ||
   ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "malformed RemoteAddr" "$ROOT_DIR/README.md" ||
   ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/README.md"; then
@@ -119,6 +125,7 @@ if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "make build" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "Go module" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "malformed RemoteAddr" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/VISION.md"; then
@@ -158,6 +165,11 @@ fi
 
 if ! grep -Fq "status: completed" "$MAKE_GATES_PLAN"; then
   printf '%s\n' "Make gate alias plan must be marked completed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$REMOTE_ADDR_PLAN"; then
+  printf '%s\n' "Malformed RemoteAddr plan must be marked completed." >&2
   exit 1
 fi
 

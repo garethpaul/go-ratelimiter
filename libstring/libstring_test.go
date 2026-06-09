@@ -112,3 +112,14 @@ func TestRemoteIPHandlesIPv6RemoteAddr(t *testing.T) {
 		}
 	}
 }
+
+func TestRemoteIPSkipsMalformedRemoteAddr(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "not-an-ip"
+
+	got := RemoteIP([]string{"RemoteAddr"}, request)
+
+	if got != "" {
+		t.Fatalf("RemoteIP = %q, want empty value for malformed RemoteAddr", got)
+	}
+}

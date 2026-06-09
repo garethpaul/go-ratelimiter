@@ -39,6 +39,18 @@ func TestBuildKeysCanPreferForwardedFor(t *testing.T) {
 	}
 }
 
+func TestBuildKeysSkipsMalformedRemoteAddr(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "not-an-ip"
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 0 {
+		t.Fatalf("keys = %#v, want no keys for malformed RemoteAddr", keys)
+	}
+}
+
 func TestBuildKeysHeaderValuesRequireConfiguredMatch(t *testing.T) {
 	limiter := NewLimiter(10, time.Minute)
 	limiter.Headers = map[string][]string{"X-Plan": {"gold"}}

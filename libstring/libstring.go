@@ -19,10 +19,13 @@ func StringInSlice(sliceString []string, needle string) bool {
 
 func ipAddrFromRemoteAddr(s string) string {
 	host, _, err := net.SplitHostPort(s)
-	if err == nil {
-		return host
+	if err != nil {
+		host = strings.Trim(s, "[]")
 	}
-	return strings.Trim(s, "[]")
+	if net.ParseIP(host) == nil {
+		return ""
+	}
+	return host
 }
 
 func ipAddrFromHeaderValue(s string) string {
