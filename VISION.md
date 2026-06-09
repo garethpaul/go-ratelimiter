@@ -20,7 +20,8 @@ Priority:
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
-- Keep the Go module, `scripts/check-baseline.sh`, and behavior tests passing
+- Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
+  `make build`, `make check`, and behavior tests passing
 
 Next priorities:
 
@@ -44,12 +45,14 @@ Rate limiting is often part of abuse prevention. Changes should be careful with
 trusted proxy headers, basic-auth usernames, and header-derived keys so callers
 do not accidentally trust attacker-controlled values.
 
-Current baseline: `go.mod` and `go.sum` define the module, `make check` runs
-`scripts/check-baseline.sh`, and tests cover default key derivation,
-proxy-aware IP lookup, IPv6 RemoteAddr parsing, configured header-value
-matching, blank X-Forwarded-For entries, blank X-Real-IP values, and 429
-responses when a bucket is empty. Cases with malformed proxy IP headers are
-skipped before limiter keys are derived.
+Current baseline: `go.mod` and `go.sum` define the module, `make lint`,
+`make test`, `make build`, and `make check` run `scripts/check-baseline.sh`,
+and tests cover default key derivation, proxy-aware IP lookup, IPv6 RemoteAddr
+parsing, configured header-value matching, blank X-Forwarded-For entries, blank
+X-Real-IP values, and 429 responses when a bucket is empty. Cases with malformed
+proxy IP headers are skipped before limiter keys are derived. Keep the exact
+guard phrases "blank X-Forwarded-For", "blank X-Real-IP", and "IPv6 RemoteAddr"
+visible for the static baseline, along with "malformed proxy IP headers".
 
 ## What We Will Not Merge (For Now)
 

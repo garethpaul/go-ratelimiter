@@ -2,6 +2,8 @@
 
 ## 2026-06-08
 
+- Added `make lint`, `make test`, and `make build` aliases so local verification
+  has the expected pre-push gate targets in addition to `make check`.
 - Added Go module metadata and lockfile for modern Go tooling.
 - Updated local imports to use the module path.
 - Added tests for default key derivation, proxy-aware IP lookup, header-value matching, and rate-limit rejection behavior.

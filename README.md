@@ -56,10 +56,20 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 Run the baseline:
 
 ```bash
+make lint
+make test
+make build
 make check
 ```
 
-The baseline runs `go test ./...`, verifies Go formatting, checks module-qualified imports, and ensures the behavior tests for key derivation, proxy-aware IP lookup, blank X-Forwarded-For entries, blank X-Real-IP values, malformed proxy IP headers, IPv6 RemoteAddr parsing, header-value matching, and 429 responses remain in place.
+The `lint`, `test`, and `build` targets currently delegate to the static
+baseline so every local gate entry point runs the same checks. The baseline runs
+`go test ./...`, verifies Go formatting, checks module-qualified imports, and
+ensures the behavior tests for key derivation, proxy-aware IP lookup, blank
+X-Forwarded-For entries, blank X-Real-IP values, malformed proxy IP headers,
+IPv6 RemoteAddr parsing, header-value matching, and 429 responses remain in
+place. Keep the exact guard phrases "blank X-Forwarded-For", "blank X-Real-IP",
+and "IPv6 RemoteAddr" visible for the static baseline.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -85,9 +95,12 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
-- Run `make check` before pushing limiter behavior, config, or import changes.
+- Run `make lint`, `make test`, `make build`, and `make check` before pushing
+  limiter behavior, config, or import changes.
 - See `docs/plans/2026-06-09-proxy-header-ip-validation.md` for the malformed
   proxy header IP validation guard.
+- See `docs/plans/2026-06-09-make-gate-aliases.md` for local verification
+  target guardrails.
 
 ## Contributing
 
