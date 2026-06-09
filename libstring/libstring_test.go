@@ -40,6 +40,18 @@ func TestRemoteIPFallsBackAfterBlankRealIP(t *testing.T) {
 	}
 }
 
+func TestRemoteIPFallsBackAfterMalformedRealIP(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "10.0.0.1:1234"
+	request.Header.Set("X-Real-IP", "not-an-ip")
+
+	got := RemoteIP([]string{"X-Real-IP", "RemoteAddr"}, request)
+
+	if got != "10.0.0.1" {
+		t.Fatalf("RemoteIP = %q, want fallback RemoteAddr value", got)
+	}
+}
+
 func TestRemoteIPTrimsForwardedForList(t *testing.T) {
 	request := httptest.NewRequest("GET", "/", nil)
 	request.RemoteAddr = "10.0.0.1:1234"
@@ -61,6 +73,18 @@ func TestRemoteIPSkipsBlankForwardedForEntries(t *testing.T) {
 
 	if got != "198.51.100.7" {
 		t.Fatalf("RemoteIP = %q, want first non-empty forwarded IP", got)
+	}
+}
+
+func TestRemoteIPSkipsMalformedForwardedForEntries(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "10.0.0.1:1234"
+	request.Header.Set("X-Forwarded-For", "not-an-ip, 198.51.100.7")
+
+	got := RemoteIP([]string{"X-Forwarded-For", "RemoteAddr"}, request)
+
+	if got != "198.51.100.7" {
+		t.Fatalf("RemoteIP = %q, want first valid forwarded IP", got)
 	}
 }
 

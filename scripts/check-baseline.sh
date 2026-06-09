@@ -5,6 +5,7 @@ ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PLAN="$ROOT_DIR/docs/plans/2026-06-08-go-module-baseline.md"
 IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-09-ipv6-remote-addr.md"
 REAL_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-09-real-ip-blank-values.md"
+PROXY_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-09-proxy-header-ip-validation.md"
 
 require_file() {
   path=$1
@@ -31,6 +32,7 @@ for path in \
   "libstring/libstring_test.go" \
   "docs/plans/2026-06-08-go-module-baseline.md" \
   "docs/plans/2026-06-09-ipv6-remote-addr.md" \
+  "docs/plans/2026-06-09-proxy-header-ip-validation.md" \
   "docs/plans/2026-06-09-real-ip-blank-values.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
@@ -63,7 +65,9 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPSkipsBlankForwardedForEntries" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPSkipsMalformedForwardedForEntries" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankForwardedFor" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
@@ -76,19 +80,21 @@ if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go"; then
 fi
 
 if ! grep -Fq "func ipAddrFromForwardedFor" "$ROOT_DIR/libstring/libstring.go" ||
-  ! grep -Fq "strings.TrimSpace(part)" "$ROOT_DIR/libstring/libstring.go"; then
-  printf '%s\n' "X-Forwarded-For parsing must skip blank entries before deriving keys." >&2
+  ! grep -Fq "net.ParseIP" "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq "ipAddrFromHeaderValue(part)" "$ROOT_DIR/libstring/libstring.go"; then
+  printf '%s\n' "X-Forwarded-For parsing must skip blank and malformed entries before deriving keys." >&2
   exit 1
 fi
 
-if ! grep -Fq 'realIP := strings.TrimSpace(r.Header.Get("X-Real-IP"))' "$ROOT_DIR/libstring/libstring.go"; then
-  printf '%s\n' "X-Real-IP parsing must trim whitespace and skip blank values before deriving keys." >&2
+if ! grep -Fq 'realIP := ipAddrFromHeaderValue(r.Header.Get("X-Real-IP"))' "$ROOT_DIR/libstring/libstring.go"; then
+  printf '%s\n' "X-Real-IP parsing must trim whitespace and skip blank or malformed values before deriving keys." >&2
   exit 1
 fi
 
 if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "make check" "$ROOT_DIR/README.md" ||
   ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/README.md"; then
   printf '%s\n' "README must document the Go verification baseline." >&2
@@ -98,6 +104,7 @@ fi
 if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "Go module" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "IPv6 RemoteAddr" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/VISION.md"; then
   printf '%s\n' "VISION must describe the current module baseline." >&2
@@ -126,6 +133,11 @@ fi
 
 if ! grep -Fq "status: completed" "$REAL_IP_PLAN"; then
   printf '%s\n' "X-Real-IP blank value plan must be marked completed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$PROXY_IP_PLAN"; then
+  printf '%s\n' "Proxy header IP validation plan must be marked completed." >&2
   exit 1
 fi
 

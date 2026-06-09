@@ -48,7 +48,8 @@ Current baseline: `go.mod` and `go.sum` define the module, `make check` runs
 `scripts/check-baseline.sh`, and tests cover default key derivation,
 proxy-aware IP lookup, IPv6 RemoteAddr parsing, configured header-value
 matching, blank X-Forwarded-For entries, blank X-Real-IP values, and 429
-responses when a bucket is empty.
+responses when a bucket is empty. Cases with malformed proxy IP headers are
+skipped before limiter keys are derived.
 
 ## What We Will Not Merge (For Now)
 
