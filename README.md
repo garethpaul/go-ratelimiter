@@ -59,7 +59,7 @@ Run the baseline:
 make check
 ```
 
-The baseline runs `go test ./...`, verifies Go formatting, checks module-qualified imports, and ensures the behavior tests for key derivation, proxy-aware IP lookup, blank X-Forwarded-For entries, IPv6 RemoteAddr parsing, header-value matching, and 429 responses remain in place.
+The baseline runs `go test ./...`, verifies Go formatting, checks module-qualified imports, and ensures the behavior tests for key derivation, proxy-aware IP lookup, blank X-Forwarded-For entries, blank X-Real-IP values, IPv6 RemoteAddr parsing, header-value matching, and 429 responses remain in place.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -73,6 +73,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Proxy header behavior is caller-configured through `Limiter.IPLookups`; do not change lookup order semantics without tests and documentation.
 - Blank X-Forwarded-For entries are skipped before limiter keys are derived,
   so malformed leading commas cannot produce an empty IP key.
+- Blank or padded X-Real-IP values are trimmed or skipped before limiter keys
+  are derived, allowing later configured lookup sources to be used.
 - `RemoteAddr` parsing supports IPv4 and IPv6 host:port values before deriving
   limiter keys.
 - Configured header values only contribute keys when the request header contains one of those configured values.

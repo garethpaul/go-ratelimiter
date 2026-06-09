@@ -17,6 +17,29 @@ func TestRemoteIPUsesConfiguredLookupOrder(t *testing.T) {
 	}
 }
 
+func TestRemoteIPTrimsRealIP(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.Header.Set("X-Real-IP", " 203.0.113.9 ")
+
+	got := RemoteIP([]string{"X-Real-IP"}, request)
+
+	if got != "203.0.113.9" {
+		t.Fatalf("RemoteIP = %q, want trimmed X-Real-IP value", got)
+	}
+}
+
+func TestRemoteIPFallsBackAfterBlankRealIP(t *testing.T) {
+	request := httptest.NewRequest("GET", "/", nil)
+	request.RemoteAddr = "10.0.0.1:1234"
+	request.Header.Set("X-Real-IP", " ")
+
+	got := RemoteIP([]string{"X-Real-IP", "RemoteAddr"}, request)
+
+	if got != "10.0.0.1" {
+		t.Fatalf("RemoteIP = %q, want fallback RemoteAddr value", got)
+	}
+}
+
 func TestRemoteIPTrimsForwardedForList(t *testing.T) {
 	request := httptest.NewRequest("GET", "/", nil)
 	request.RemoteAddr = "10.0.0.1:1234"

@@ -8,5 +8,7 @@
 - Added IPv6 `RemoteAddr` parsing coverage and switched host:port parsing to
   `net.SplitHostPort`.
 - Skipped blank `X-Forwarded-For` entries before deriving limiter keys.
+- Trimmed `X-Real-IP` values and skipped blank values before deriving limiter
+  keys.
 - Fixed configured header-value limiting so non-matching request values do not reuse configured values as keys.
 - Added `make check` and static guardrails for formatting, tests, module imports, and plan completion.
