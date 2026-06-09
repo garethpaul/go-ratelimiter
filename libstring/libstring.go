@@ -2,6 +2,7 @@
 package libstring
 
 import (
+	"net"
 	"net/http"
 	"strings"
 )
@@ -17,11 +18,11 @@ func StringInSlice(sliceString []string, needle string) bool {
 }
 
 func ipAddrFromRemoteAddr(s string) string {
-	idx := strings.LastIndex(s, ":")
-	if idx == -1 {
-		return s
+	host, _, err := net.SplitHostPort(s)
+	if err == nil {
+		return host
 	}
-	return s[:idx]
+	return strings.Trim(s, "[]")
 }
 
 // RemoteIP finds IP Address given http.Request struct.

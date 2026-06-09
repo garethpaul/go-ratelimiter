@@ -28,3 +28,16 @@ func TestRemoteIPTrimsForwardedForList(t *testing.T) {
 		t.Fatalf("RemoteIP = %q, want first forwarded IP", got)
 	}
 }
+
+func TestRemoteIPHandlesIPv6RemoteAddr(t *testing.T) {
+	for _, remoteAddr := range []string{"[2001:db8::1]:1234", "2001:db8::1"} {
+		request := httptest.NewRequest("GET", "/", nil)
+		request.RemoteAddr = remoteAddr
+
+		got := RemoteIP([]string{"RemoteAddr"}, request)
+
+		if got != "2001:db8::1" {
+			t.Fatalf("RemoteIP(%q) = %q, want IPv6 host", remoteAddr, got)
+		}
+	}
+}

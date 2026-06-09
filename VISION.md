@@ -19,7 +19,7 @@ Priority:
 - Preserve per-handler rate limiting through `LimitFuncHandler`
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
-- Maintain clear examples for proxy-aware IP lookup
+- Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Keep the Go module, `scripts/check-baseline.sh`, and behavior tests passing
 
 Next priorities:
@@ -46,8 +46,8 @@ do not accidentally trust attacker-controlled values.
 
 Current baseline: `go.mod` and `go.sum` define the module, `make check` runs
 `scripts/check-baseline.sh`, and tests cover default key derivation,
-proxy-aware IP lookup, configured header-value matching, and 429 responses when
-a bucket is empty.
+proxy-aware IP lookup, IPv6 RemoteAddr parsing, configured header-value
+matching, and 429 responses when a bucket is empty.
 
 ## What We Will Not Merge (For Now)
 
