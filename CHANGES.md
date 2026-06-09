@@ -2,6 +2,7 @@
 
 ## 2026-06-09
 
+- Skipped blank header-only request values before deriving limiter keys.
 - Skipped blank configured header values before deriving limiter keys.
 - Matched configured header values across all request header values so a blank
   first value cannot hide a later configured match.

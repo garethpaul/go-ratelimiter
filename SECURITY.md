@@ -40,6 +40,8 @@ Configured header value matching should inspect all request header values so a
 blank first header value cannot bypass a later configured match.
 Blank configured header values should not produce limiter keys with empty
 header value components.
+Blank header-only request values should not produce limiter keys when a limiter
+is configured to match any non-empty value for that header.
 
 ## Dependency and Supply Chain Security
 

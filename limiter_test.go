@@ -131,6 +131,20 @@ func TestBuildKeysHeaderValueMatchSkipsBlankConfiguredValue(t *testing.T) {
 	}
 }
 
+func TestBuildKeysHeaderOnlySkipsBlankRequestValue(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.Headers = map[string][]string{"X-Plan": nil}
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Plan", " ")
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 0 {
+		t.Fatalf("keys = %#v, want no keys for blank request header value", keys)
+	}
+}
+
 func TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue(t *testing.T) {
 	limiter := NewLimiter(10, time.Minute)
 	limiter.Methods = []string{http.MethodPost}

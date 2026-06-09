@@ -10,6 +10,7 @@ MAKE_GATES_PLAN="$ROOT_DIR/docs/plans/2026-06-09-make-gate-aliases.md"
 REMOTE_ADDR_PLAN="$ROOT_DIR/docs/plans/2026-06-09-malformed-remote-addr.md"
 HEADER_BLANK_VALUE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-blank-value-matching.md"
 HEADER_BLANK_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-blank-configured-values.md"
+HEADER_ONLY_BLANK_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-only-blank-request-values.md"
 
 require_file() {
   path=$1
@@ -42,6 +43,7 @@ for path in \
   "docs/plans/2026-06-09-malformed-remote-addr.md" \
   "docs/plans/2026-06-09-header-blank-value-matching.md" \
   "docs/plans/2026-06-09-header-blank-configured-values.md" \
+  "docs/plans/2026-06-09-header-only-blank-request-values.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -77,6 +79,7 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysHeaderValueMatchSkipsBlankFirstRequestValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysHeaderValueMatchSkipsBlankConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysHeaderOnlySkipsBlankRequestValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysSkipsMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
@@ -126,6 +129,11 @@ if ! grep -Fq 'strings.TrimSpace(headerValue) == ""' "$ROOT_DIR/limiter.go"; the
   exit 1
 fi
 
+if ! grep -Fq 'strings.TrimSpace(requestValue) != ""' "$ROOT_DIR/limiter.go"; then
+  printf '%s\n' "Header-only matching must skip blank request header values before deriving keys." >&2
+  exit 1
+fi
+
 if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "make lint" "$ROOT_DIR/README.md" ||
   ! grep -Fq "make test" "$ROOT_DIR/README.md" ||
@@ -136,6 +144,7 @@ if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank first header value" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank configured header values" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "blank header-only request values" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/README.md"; then
   printf '%s\n' "README must document the Go verification baseline." >&2
@@ -152,6 +161,7 @@ if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank first header value" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank configured header values" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "blank header-only request values" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/VISION.md"; then
   printf '%s\n' "VISION must describe the current module baseline." >&2
@@ -205,6 +215,11 @@ fi
 
 if ! grep -Fq "status: completed" "$HEADER_BLANK_CONFIG_PLAN"; then
   printf '%s\n' "Header blank configured value plan must be marked completed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$HEADER_ONLY_BLANK_REQUEST_PLAN"; then
+  printf '%s\n' "Header-only blank request value plan must be marked completed." >&2
   exit 1
 fi
 

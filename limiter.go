@@ -147,7 +147,12 @@ func matchingHeaderValues(r *http.Request, headerKey string, headerValues []stri
 		return nil
 	}
 	if len(headerValues) == 0 {
-		return []string{""}
+		for _, requestValue := range requestValues {
+			if strings.TrimSpace(requestValue) != "" {
+				return []string{""}
+			}
+		}
+		return nil
 	}
 
 	matchedValues := make([]string, 0, len(headerValues))

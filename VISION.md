@@ -21,6 +21,7 @@ Priority:
 - Avoid external storage requirements for the default limiter
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Preserve configured header matching when a request has a blank first header value
+- Preserve header-only matching only for non-empty request header values
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing
 
@@ -57,10 +58,12 @@ Configured header matching checks all request values so a blank first header
 value cannot hide a later configured match.
 The blank configured header values guard skips empty configured values before
 limiter keys are derived.
+The blank header-only request values guard skips empty request header values
+before limiter keys are derived.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
-"malformed proxy IP headers".
+"malformed proxy IP headers" and "blank header-only request values".
 
 ## What We Will Not Merge (For Now)
 
