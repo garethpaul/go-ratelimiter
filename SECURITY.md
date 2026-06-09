@@ -38,6 +38,8 @@ Malformed RemoteAddr values should be skipped before limiter keys are derived
 so later configured lookup sources can still be used.
 Configured header value matching should inspect all request header values so a
 blank first header value cannot bypass a later configured match.
+Blank configured header values should not produce limiter keys with empty
+header value components.
 
 ## Dependency and Supply Chain Security
 

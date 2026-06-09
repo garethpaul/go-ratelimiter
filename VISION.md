@@ -55,6 +55,8 @@ malformed RemoteAddr values and malformed proxy IP headers are skipped before
 limiter keys are derived, allowing later configured lookup sources to be used.
 Configured header matching checks all request values so a blank first header
 value cannot hide a later configured match.
+The blank configured header values guard skips empty configured values before
+limiter keys are derived.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
