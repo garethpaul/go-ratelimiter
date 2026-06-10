@@ -11,6 +11,8 @@ REMOTE_ADDR_PLAN="$ROOT_DIR/docs/plans/2026-06-09-malformed-remote-addr.md"
 HEADER_BLANK_VALUE_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-blank-value-matching.md"
 HEADER_BLANK_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-blank-configured-values.md"
 HEADER_ONLY_BLANK_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-only-blank-request-values.md"
+CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
+CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
 
 require_file() {
   path=$1
@@ -21,6 +23,7 @@ require_file() {
 }
 
 for path in \
+  ".github/workflows/check.yml" \
   ".gitignore" \
   "CHANGES.md" \
   "Makefile" \
@@ -44,6 +47,7 @@ for path in \
   "docs/plans/2026-06-09-header-blank-value-matching.md" \
   "docs/plans/2026-06-09-header-blank-configured-values.md" \
   "docs/plans/2026-06-09-header-only-blank-request-values.md" \
+  "docs/plans/2026-06-10-ci-baseline.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -62,7 +66,9 @@ if command -v go >/dev/null 2>&1; then
     printf '%s\n' "$unformatted" >&2
     exit 1
   fi
-  (cd "$ROOT_DIR" && go test ./...)
+  (cd "$ROOT_DIR" && go vet ./...)
+  (cd "$ROOT_DIR" && go test -race ./...)
+  (cd "$ROOT_DIR" && go mod tidy -diff)
 else
   printf '%s\n' "go is required for go-ratelimiter verification." >&2
   exit 1
@@ -134,7 +140,21 @@ if ! grep -Fq 'strings.TrimSpace(requestValue) != ""' "$ROOT_DIR/limiter.go"; th
   exit 1
 fi
 
+if ! grep -Fq "workflow_dispatch:" "$CI_WORKFLOW" ||
+  ! grep -Fq "contents: read" "$CI_WORKFLOW" ||
+  ! grep -Fq "cancel-in-progress: true" "$CI_WORKFLOW" ||
+  ! grep -Fq "runs-on: ubuntu-24.04" "$CI_WORKFLOW" ||
+  ! grep -Fq "timeout-minutes: 10" "$CI_WORKFLOW" ||
+  ! grep -Fq "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" "$CI_WORKFLOW" ||
+  ! grep -Fq "actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c" "$CI_WORKFLOW" ||
+  ! grep -Fq "go-version-file: go.mod" "$CI_WORKFLOW" ||
+  ! grep -Fq "make check" "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions must keep the pinned, bounded Go race-test contract." >&2
+  exit 1
+fi
+
 if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
+  ! grep -Fq "GitHub Actions" "$ROOT_DIR/README.md" ||
   ! grep -Fq "make lint" "$ROOT_DIR/README.md" ||
   ! grep -Fq "make test" "$ROOT_DIR/README.md" ||
   ! grep -Fq "make build" "$ROOT_DIR/README.md" ||
@@ -152,6 +172,7 @@ if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
 fi
 
 if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "GitHub Actions" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "make lint" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "make test" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "make build" "$ROOT_DIR/VISION.md" ||
@@ -220,6 +241,13 @@ fi
 
 if ! grep -Fq "status: completed" "$HEADER_ONLY_BLANK_REQUEST_PLAN"; then
   printf '%s\n' "Header-only blank request value plan must be marked completed." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$CI_PLAN" ||
+  ! grep -Fq "GitHub Actions" "$CI_PLAN" ||
+  ! grep -Fq "make check" "$CI_PLAN"; then
+  printf '%s\n' "CI baseline plan must record completed status and make check verification." >&2
   exit 1
 fi
 

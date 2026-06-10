@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-10
+
+- Added a pinned, least-privilege Go 1.25.3 workflow with vet, race-enabled
+  tests, module-integrity checks, and static guardrails.
+
 ## 2026-06-09
 
 - Skipped blank header-only request values before deriving limiter keys.
