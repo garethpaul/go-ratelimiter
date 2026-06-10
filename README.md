@@ -100,6 +100,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   blank first header value cannot hide a later configured match.
 - Blank configured header values are skipped before limiter keys are derived.
 - Blank header-only request values are skipped before limiter keys are derived.
+- Each limiter retains at most 10,000 tracked keys and evicts the least recently
+  used bucket before admitting another request-derived key.
 
 ## Maintenance Notes
 
@@ -120,6 +122,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-09-header-only-blank-request-values.md` for blank
   header-only request value handling.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions baseline.
+- See `docs/plans/2026-06-10-rate-limiter-key-cap.md` for bounded token-bucket
+  storage and least-recently-used eviction.
 
 ## Contributing
 

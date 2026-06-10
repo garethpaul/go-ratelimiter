@@ -60,6 +60,8 @@ The blank configured header values guard skips empty configured values before
 limiter keys are derived.
 The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
+Each limiter retains at most 10,000 request-derived keys and evicts the least
+recently used bucket before admitting another.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with

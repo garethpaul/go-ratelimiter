@@ -2,6 +2,8 @@
 
 ## 2026-06-10
 
+- Bounded each limiter to 10,000 tracked keys with least-recently-used eviction
+  and race-tested capacity coverage.
 - Added a pinned, least-privilege Go 1.25.3 workflow with vet, race-enabled
   tests, module-integrity checks, and static guardrails.
 

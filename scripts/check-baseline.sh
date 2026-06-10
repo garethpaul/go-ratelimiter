@@ -13,6 +13,7 @@ HEADER_BLANK_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-blank-configure
 HEADER_ONLY_BLANK_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-only-blank-request-values.md"
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
+KEY_CAP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-rate-limiter-key-cap.md"
 
 require_file() {
   path=$1
@@ -35,6 +36,7 @@ for path in \
   "limiter.go" \
   "limiter_test.go" \
   "config/config.go" \
+  "config/config_test.go" \
   "errors/errors.go" \
   "libstring/libstring.go" \
   "libstring/libstring_test.go" \
@@ -48,6 +50,7 @@ for path in \
   "docs/plans/2026-06-09-header-blank-configured-values.md" \
   "docs/plans/2026-06-09-header-only-blank-request-values.md" \
   "docs/plans/2026-06-10-ci-baseline.md" \
+  "docs/plans/2026-06-10-rate-limiter-key-cap.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -101,6 +104,17 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
+  exit 1
+fi
+
+if ! grep -Fq "defaultMaxTrackedKeys = 10000" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "list.New()" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "MoveToFront" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "tokenBucketOrder.Back()" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "delete(l.tokenBuckets, oldestKey)" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "TestLimiterCapsTrackedKeys" "$ROOT_DIR/config/config_test.go" ||
+  ! grep -Fq "TestLimiterEvictsLeastRecentlyUsedKey" "$ROOT_DIR/config/config_test.go"; then
+  printf '%s\n' "Limiter keys must remain capped with recency-sensitive eviction coverage." >&2
   exit 1
 fi
 
@@ -166,6 +180,7 @@ if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank configured header values" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank header-only request values" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "10,000 tracked keys" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/README.md"; then
   printf '%s\n' "README must document the Go verification baseline." >&2
   exit 1
@@ -184,6 +199,7 @@ if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank configured header values" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank header-only request values" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "10,000 request-derived keys" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Real-IP" "$ROOT_DIR/VISION.md"; then
   printf '%s\n' "VISION must describe the current module baseline." >&2
   exit 1
@@ -248,6 +264,12 @@ if ! grep -Fq "status: completed" "$CI_PLAN" ||
   ! grep -Fq "GitHub Actions" "$CI_PLAN" ||
   ! grep -Fq "make check" "$CI_PLAN"; then
   printf '%s\n' "CI baseline plan must record completed status and make check verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$KEY_CAP_PLAN" ||
+  ! grep -Fq "Mutations disabling the cap or recency refresh must fail" "$KEY_CAP_PLAN"; then
+  printf '%s\n' "Rate-limiter key-cap plan must record completed mutation verification." >&2
   exit 1
 fi
 
