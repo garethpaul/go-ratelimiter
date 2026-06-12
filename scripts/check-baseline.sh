@@ -14,6 +14,7 @@ HEADER_ONLY_BLANK_REQUEST_PLAN="$ROOT_DIR/docs/plans/2026-06-09-header-only-blan
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
 KEY_CAP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-rate-limiter-key-cap.md"
+REFILL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-token-bucket-refill-semantics.md"
 
 require_file() {
   path=$1
@@ -51,6 +52,7 @@ for path in \
   "docs/plans/2026-06-09-header-only-blank-request-values.md" \
   "docs/plans/2026-06-10-ci-baseline.md" \
   "docs/plans/2026-06-10-rate-limiter-key-cap.md" \
+  "docs/plans/2026-06-12-token-bucket-refill-semantics.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -115,6 +117,14 @@ if ! grep -Fq "defaultMaxTrackedKeys = 10000" "$ROOT_DIR/config/config.go" ||
   ! grep -Fq "TestLimiterCapsTrackedKeys" "$ROOT_DIR/config/config_test.go" ||
   ! grep -Fq "TestLimiterEvictsLeastRecentlyUsedKey" "$ROOT_DIR/config/config_test.go"; then
   printf '%s\n' "Limiter keys must remain capped with recency-sensitive eviction coverage." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'l.Max <= 0 || l.TTL <= 0' "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq 'rate.Limit(float64(l.Max) / l.TTL.Seconds())' "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "TestLimiterRefillsMaxTokensPerTTL" "$ROOT_DIR/config/config_test.go" ||
+  ! grep -Fq "TestLimiterRejectsInvalidConfigurationWithoutTrackingKeys" "$ROOT_DIR/config/config_test.go"; then
+  printf '%s\n' "Token buckets must refill Max tokens per TTL and reject invalid limits without tracking keys." >&2
   exit 1
 fi
 
@@ -270,6 +280,12 @@ fi
 if ! grep -Fq "status: completed" "$KEY_CAP_PLAN" ||
   ! grep -Fq "Mutations disabling the cap or recency refresh must fail" "$KEY_CAP_PLAN"; then
   printf '%s\n' "Rate-limiter key-cap plan must record completed mutation verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$REFILL_PLAN" ||
+  ! grep -Fq "Mutations restoring \`rate.Every(TTL)\`" "$REFILL_PLAN"; then
+  printf '%s\n' "Token-bucket refill plan must record completed mutation verification." >&2
   exit 1
 fi
 

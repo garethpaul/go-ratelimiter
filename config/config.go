@@ -36,10 +36,10 @@ type Limiter struct {
 	// HTTP status code when limit is reached.
 	StatusCode int
 
-	// Maximum number of requests to limit per duration.
+	// Maximum burst size and number of tokens refilled per TTL.
 	Max int64
 
-	// Duration of rate-limiter.
+	// Duration over which Max tokens refill.
 	TTL time.Duration
 
 	// List of places to look up IP address.
@@ -73,6 +73,10 @@ type Limiter struct {
 func (l *Limiter) LimitReached(key string) bool {
 	l.Lock()
 	defer l.Unlock()
+	if l.Max <= 0 || l.TTL <= 0 || uint64(l.Max) > uint64(^uint(0)>>1) {
+		return true
+	}
+
 	bucket, found := l.tokenBuckets[key]
 	if found {
 		l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[key])
@@ -85,7 +89,8 @@ func (l *Limiter) LimitReached(key string) bool {
 			l.tokenBucketOrder.Remove(oldest)
 		}
 
-		bucket = rate.NewLimiter(rate.Every(l.TTL), int(l.Max))
+		refillRate := rate.Limit(float64(l.Max) / l.TTL.Seconds())
+		bucket = rate.NewLimiter(refillRate, int(l.Max))
 		l.tokenBuckets[key] = bucket
 		l.tokenBucketEntries[key] = l.tokenBucketOrder.PushFront(key)
 	}

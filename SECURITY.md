@@ -44,6 +44,9 @@ Blank header-only request values should not produce limiter keys when a limiter
 is configured to match any non-empty value for that header.
 Token-bucket storage should remain capped with least-recently-used eviction so
 rotating request-derived keys cannot grow process memory without bound.
+Token buckets refill `Max` requests over each positive `TTL`. Non-positive or
+platform-unrepresentable limits fail closed before allocating request-derived
+key state so invalid configuration cannot silently disable rate limiting.
 
 GitHub Actions runs formatting, vet, race-enabled tests, module-integrity
 checks, and static guardrails with read-only repository permissions. Keep the

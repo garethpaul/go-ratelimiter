@@ -19,6 +19,7 @@ Priority:
 - Preserve per-handler rate limiting through `LimitFuncHandler`
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
+- Refill `Max` tokens per `TTL` and fail closed for invalid limit configuration
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Preserve configured header matching when a request has a blank first header value
 - Preserve header-only matching only for non-empty request header values
@@ -62,6 +63,8 @@ The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
 Each limiter retains at most 10,000 request-derived keys and evicts the least
 recently used bucket before admitting another.
+Valid token buckets refill `Max` requests across each `TTL`; non-positive or
+platform-unrepresentable limits reject requests without tracking keys.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with

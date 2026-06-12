@@ -1,5 +1,14 @@
 # Changes
 
+## 2026-06-12
+
+- Corrected token-bucket refill rates to restore `Max` requests across each
+  `TTL` instead of restoring only one request per complete duration.
+- Made non-positive and platform-unrepresentable limiter configurations fail
+  closed without allocating request-derived key state.
+- Added race-tested refill, burst, invalid-configuration, and allocation
+  regressions plus static maintenance contracts.
+
 ## 2026-06-10
 
 - Bounded each limiter to 10,000 tracked keys with least-recently-used eviction
