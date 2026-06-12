@@ -2,6 +2,8 @@
 
 ## 2026-06-12
 
+- Made rate-limit metadata and rejection content types replace stale response
+  values instead of accumulating ambiguous duplicates.
 - Encoded limiter key components unambiguously and stored only fixed-length
   SHA-256 identifiers so request-controlled key bytes remain bounded.
 - Disabled persisted checkout credentials, enforced one canonical hosted

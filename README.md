@@ -52,6 +52,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - Use `LimitFuncHandler` or `LimitHandler` to wrap an HTTP handler with an in-memory token-bucket limiter.
 - `NewLimiter(max, ttl)` permits a burst of `max` requests and refills `max`
   tokens across each `ttl`; non-positive values fail closed.
+- Middleware-owned rate-limit and rejection content-type headers replace stale
+  values so nested or repeated application remains unambiguous.
 
 ## Testing and Verification
 

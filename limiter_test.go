@@ -187,6 +187,43 @@ func TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty(t *testing.T) 
 	}
 }
 
+func TestSetResponseHeadersReplacesExistingValues(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	recorder := httptest.NewRecorder()
+	recorder.Header().Add("X-Rate-Limit-Limit", "stale")
+	recorder.Header().Add("X-Rate-Limit-Duration", "stale")
+
+	SetResponseHeaders(limiter, recorder)
+	SetResponseHeaders(limiter, recorder)
+
+	if got, want := recorder.Header().Values("X-Rate-Limit-Limit"), []string{"10"}; !equalStrings(got, want) {
+		t.Fatalf("limit header values = %#v, want %#v", got, want)
+	}
+	if got, want := recorder.Header().Values("X-Rate-Limit-Duration"), []string{"1m0s"}; !equalStrings(got, want) {
+		t.Fatalf("duration header values = %#v, want %#v", got, want)
+	}
+}
+
+func TestLimitHandlerReplacesExistingRejectionContentType(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.MessageContentType = "application/problem+json"
+	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+
+	recorder := httptest.NewRecorder()
+	recorder.Header().Add("Content-Type", "text/html")
+	handler.ServeHTTP(recorder, request)
+
+	if got, want := recorder.Header().Values("Content-Type"), []string{"application/problem+json"}; !equalStrings(got, want) {
+		t.Fatalf("content type values = %#v, want %#v", got, want)
+	}
+}
+
 func TestLimitByKeysKeepsDelimitedComponentsDistinct(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 
