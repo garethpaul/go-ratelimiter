@@ -179,8 +179,8 @@ func matchingHeaderValues(r *http.Request, headerKey string, headerValues []stri
 
 // SetResponseHeaders configures X-Rate-Limit-Limit and X-Rate-Limit-Duration
 func SetResponseHeaders(limiter *config.Limiter, w http.ResponseWriter) {
-	w.Header().Add("X-Rate-Limit-Limit", strconv.FormatInt(limiter.Max, 10))
-	w.Header().Add("X-Rate-Limit-Duration", limiter.TTL.String())
+	w.Header().Set("X-Rate-Limit-Limit", strconv.FormatInt(limiter.Max, 10))
+	w.Header().Set("X-Rate-Limit-Duration", limiter.TTL.String())
 }
 
 // LimitHandler is a middleware that performs rate-limiting given http.Handler struct.
@@ -190,7 +190,7 @@ func LimitHandler(limiter *config.Limiter, next http.Handler) http.Handler {
 
 		httpError := LimitByRequest(limiter, r)
 		if httpError != nil {
-			w.Header().Add("Content-Type", limiter.MessageContentType)
+			w.Header().Set("Content-Type", limiter.MessageContentType)
 			w.WriteHeader(httpError.StatusCode)
 			w.Write([]byte(httpError.Message))
 			return

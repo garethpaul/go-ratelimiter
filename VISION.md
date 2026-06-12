@@ -20,6 +20,7 @@ Priority:
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
 - Refill `Max` tokens per `TTL` and fail closed for invalid limit configuration
+- Keep middleware-owned response metadata single-valued and authoritative
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Preserve configured header matching when a request has a blank first header value
 - Preserve header-only matching only for non-empty request header values
@@ -67,6 +68,8 @@ fixed-length hashes of length-prefixed components, bounding retained key bytes
 and keeping delimiter-containing values distinct.
 Valid token buckets refill `Max` requests across each `TTL`; non-positive or
 platform-unrepresentable limits reject requests without tracking keys.
+Rate-limit metadata and rejection content types replace stale response values,
+so repeated middleware application remains deterministic for HTTP clients.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
