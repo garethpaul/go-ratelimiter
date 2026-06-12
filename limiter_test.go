@@ -187,6 +187,20 @@ func TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty(t *testing.T) 
 	}
 }
 
+func TestLimitByKeysKeepsDelimitedComponentsDistinct(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+
+	if err := LimitByKeys(limiter, []string{"a|b", "c"}); err != nil {
+		t.Fatalf("first key set was limited: %v", err)
+	}
+	if err := LimitByKeys(limiter, []string{"a", "b|c"}); err != nil {
+		t.Fatalf("distinct key set collided: %v", err)
+	}
+	if err := LimitByKeys(limiter, []string{"a|b", "c"}); err == nil {
+		t.Fatal("repeated key set did not reach the limit")
+	}
+}
+
 func equalStrings(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

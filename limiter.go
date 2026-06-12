@@ -17,14 +17,24 @@ func NewLimiter(max int64, ttl time.Duration) *config.Limiter {
 	return config.NewLimiter(max, ttl)
 }
 
-// LimitByKeys keeps track number of request made by keys separated by pipe.
+// LimitByKeys tracks requests using an unambiguous encoding of key components.
 // It returns HTTPError when limit is exceeded.
 func LimitByKeys(limiter *config.Limiter, keys []string) *errors.HTTPError {
-	if limiter.LimitReached(strings.Join(keys, "|")) {
+	if limiter.LimitReached(encodeKeys(keys)) {
 		return &errors.HTTPError{Message: limiter.Message, StatusCode: limiter.StatusCode}
 	}
 
 	return nil
+}
+
+func encodeKeys(keys []string) string {
+	var encoded strings.Builder
+	for _, key := range keys {
+		encoded.WriteString(strconv.Itoa(len(key)))
+		encoded.WriteByte(':')
+		encoded.WriteString(key)
+	}
+	return encoded.String()
 }
 
 // LimitByRequest builds keys based on http.Request struct,

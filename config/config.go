@@ -1,11 +1,15 @@
 package config
 
 import (
+	"container/list"
+	"crypto/sha256"
 	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
 )
+
+const defaultMaxTrackedKeys = 10000
 
 // NewLimiter is a constructor for Limiter.
 func NewLimiter(max int64, ttl time.Duration) *Limiter {
@@ -14,6 +18,9 @@ func NewLimiter(max int64, ttl time.Duration) *Limiter {
 	limiter.Message = "You have reached the maximum request limit for this tool"
 	limiter.StatusCode = 429
 	limiter.tokenBuckets = make(map[string]*rate.Limiter)
+	limiter.tokenBucketOrder = list.New()
+	limiter.tokenBucketEntries = make(map[string]*list.Element)
+	limiter.maxTrackedKeys = defaultMaxTrackedKeys
 	limiter.IPLookups = []string{"RemoteAddr", "X-Forwarded-For", "X-Real-IP"}
 
 	return limiter
@@ -30,10 +37,10 @@ type Limiter struct {
 	// HTTP status code when limit is reached.
 	StatusCode int
 
-	// Maximum number of requests to limit per duration.
+	// Maximum burst size and number of tokens refilled per TTL.
 	Max int64
 
-	// Duration of rate-limiter.
+	// Duration over which Max tokens refill.
 	TTL time.Duration
 
 	// List of places to look up IP address.
@@ -55,6 +62,11 @@ type Limiter struct {
 	// Throttler struct
 	tokenBuckets map[string]*rate.Limiter
 
+	// LRU bookkeeping bounds request-controlled rate-limiter keys.
+	tokenBucketOrder   *list.List
+	tokenBucketEntries map[string]*list.Element
+	maxTrackedKeys     int
+
 	sync.RWMutex
 }
 
@@ -62,9 +74,33 @@ type Limiter struct {
 func (l *Limiter) LimitReached(key string) bool {
 	l.Lock()
 	defer l.Unlock()
-	if _, found := l.tokenBuckets[key]; !found {
-		l.tokenBuckets[key] = rate.NewLimiter(rate.Every(l.TTL), int(l.Max))
+	if l.Max <= 0 || l.TTL <= 0 || uint64(l.Max) > uint64(^uint(0)>>1) {
+		return true
 	}
 
-	return !l.tokenBuckets[key].AllowN(time.Now(), 1)
+	storageKey := bucketStorageKey(key)
+	bucket, found := l.tokenBuckets[storageKey]
+	if found {
+		l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[storageKey])
+	} else {
+		if l.maxTrackedKeys > 0 && len(l.tokenBuckets) >= l.maxTrackedKeys {
+			oldest := l.tokenBucketOrder.Back()
+			oldestKey := oldest.Value.(string)
+			delete(l.tokenBuckets, oldestKey)
+			delete(l.tokenBucketEntries, oldestKey)
+			l.tokenBucketOrder.Remove(oldest)
+		}
+
+		refillRate := rate.Limit(float64(l.Max) / l.TTL.Seconds())
+		bucket = rate.NewLimiter(refillRate, int(l.Max))
+		l.tokenBuckets[storageKey] = bucket
+		l.tokenBucketEntries[storageKey] = l.tokenBucketOrder.PushFront(storageKey)
+	}
+
+	return !bucket.AllowN(time.Now(), 1)
+}
+
+func bucketStorageKey(key string) string {
+	digest := sha256.Sum256([]byte(key))
+	return string(digest[:])
 }

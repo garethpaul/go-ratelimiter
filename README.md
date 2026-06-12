@@ -34,7 +34,7 @@ Additional scan context:
 ### Prerequisites
 
 - Git
-- Go 1.25 or a compatible modern Go toolchain
+- Go 1.25.11 or a compatible patched Go toolchain
 
 ### Setup
 
@@ -50,6 +50,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 - Import the package as `github.com/garethpaul/go-ratelimiter`.
 - Use `LimitFuncHandler` or `LimitHandler` to wrap an HTTP handler with an in-memory token-bucket limiter.
+- `NewLimiter(max, ttl)` permits a burst of `max` requests and refills `max`
+  tokens across each `ttl`; non-positive values fail closed.
 
 ## Testing and Verification
 
@@ -69,11 +71,15 @@ ensures the behavior tests for key derivation, proxy-aware IP lookup, blank
 X-Forwarded-For entries, blank X-Real-IP values, malformed proxy IP headers,
 malformed RemoteAddr values, IPv6 RemoteAddr parsing, header-value matching,
 blank first header value matching, blank configured header values, blank header-only request values,
-and 429 responses remain in place. Keep the exact guard phrases
+token-bucket refill semantics, invalid limit rejection, and 429 responses
+remain in place. Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline.
-GitHub Actions uses the Go version from `go.mod` and runs the same `make check`
-baseline on pushes and pull requests.
+GitHub Actions installs the exact Go version from `go.mod` and runs formatting,
+vet, race-enabled tests, module-integrity checks, and static guardrails. Tracked
+buckets use a 10,000-entry LRU cap and fixed-length SHA-256 identifiers, while
+length-prefixed component encoding keeps delimiter-containing key parts in
+independent buckets.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -100,6 +106,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   blank first header value cannot hide a later configured match.
 - Blank configured header values are skipped before limiter keys are derived.
 - Blank header-only request values are skipped before limiter keys are derived.
+- Each limiter retains at most 10,000 tracked keys and evicts the least recently
+  used bucket before admitting another request-derived key.
 
 ## Maintenance Notes
 
@@ -120,6 +128,12 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-09-header-only-blank-request-values.md` for blank
   header-only request value handling.
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions baseline.
+- See `docs/plans/2026-06-10-rate-limiter-key-cap.md` for bounded token-bucket
+  storage and least-recently-used eviction.
+- See `docs/plans/2026-06-12-bounded-key-encoding.md` for fixed-length storage
+  identifiers and collision-safe component encoding.
+- See `docs/plans/2026-06-12-ci-policy-hardening.md` for canonical hosted
+  workflow enforcement.
 
 ## Contributing
 

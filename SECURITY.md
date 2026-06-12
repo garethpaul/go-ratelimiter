@@ -42,10 +42,17 @@ Blank configured header values should not produce limiter keys with empty
 header value components.
 Blank header-only request values should not produce limiter keys when a limiter
 is configured to match any non-empty value for that header.
+Token-bucket storage should remain capped with least-recently-used eviction and
+fixed-length hashed identifiers so rotating or oversized request-derived keys
+cannot grow retained process memory without bound.
+Token buckets refill `Max` requests over each positive `TTL`. Non-positive or
+platform-unrepresentable limits fail closed before allocating request-derived
+key state so invalid configuration cannot silently disable rate limiting.
 
-GitHub Actions runs the same `make check` baseline as local development. Keep
-the workflow limited to Go tests and static checks unless a separate review
-documents a live service dependency.
+GitHub Actions runs formatting, vet, race-enabled tests, module-integrity
+checks, and static guardrails with read-only repository permissions and no
+persisted checkout credential. Keep the workflow limited to Go and static
+checks unless a separate review documents a live service dependency.
 
 ## Dependency and Supply Chain Security
 

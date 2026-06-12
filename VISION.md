@@ -19,6 +19,7 @@ Priority:
 - Preserve per-handler rate limiting through `LimitFuncHandler`
 - Keep key selection behavior explicit and documented
 - Avoid external storage requirements for the default limiter
+- Refill `Max` tokens per `TTL` and fail closed for invalid limit configuration
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Preserve configured header matching when a request has a blank first header value
 - Preserve header-only matching only for non-empty request header values
@@ -60,11 +61,20 @@ The blank configured header values guard skips empty configured values before
 limiter keys are derived.
 The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
+Each limiter retains at most 10,000 request-derived keys and evicts the least
+recently used bucket before admitting another. Stored identifiers are
+fixed-length hashes of length-prefixed components, bounding retained key bytes
+and keeping delimiter-containing values distinct.
+Valid token buckets refill `Max` requests across each `TTL`; non-positive or
+platform-unrepresentable limits reject requests without tracking keys.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
 "malformed proxy IP headers" and "blank header-only request values". GitHub Actions
-runs the same `make check` baseline using the Go version in `go.mod`.
+runs formatting, vet, race-enabled tests, module-integrity checks, and static
+guardrails using the Go version in `go.mod`.
+The hosted workflow is pinned, read-only, credential-free after checkout, and
+enforced as the repository's sole workflow by the local baseline.
 
 ## What We Will Not Merge (For Now)
 

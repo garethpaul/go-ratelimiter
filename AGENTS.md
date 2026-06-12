@@ -2,7 +2,8 @@
 
 ## Repository purpose
 
-`garethpaul/go-ratelimiter` is a Go project. A golang rate limiter.
+`garethpaul/go-ratelimiter` is a dependency-light HTTP middleware package that
+derives request keys and applies in-memory token-bucket rate limits.
 
 ## Project structure
 
@@ -18,20 +19,28 @@
 
 - Install dependencies: `go mod download`
 - Full baseline: `make check`
+- Lint/static analysis: `make lint`
+- Tests: `make test`
+- Build gate: `make build`
 - Go test all packages: `go test ./...`
+- Race-enabled tests: `go test -race ./...`
 - Go vet all packages: `go vet ./...`
 - Go build all packages: `go build ./...`
 - If a command above skips because a platform toolchain is missing, verify on a machine with that SDK before claiming platform behavior is tested.
 
 ## Coding conventions
 
-- Language mix noted in the README: Go (4).
+- Keep limiter behavior compatible with the documented Go 1.25.11 toolchain
+  unless a reviewed compatibility change is intentional.
 - Keep imports compatible with module path `github.com/garethpaul/go-ratelimiter`.
 - Run gofmt on changed Go files and keep table-driven tests close to the package under change.
 
 ## Testing guidance
 
-- Test-related files detected: `libstring/libstring_test.go`, `limiter_test.go`
+- Test-related files include `config/config_test.go`,
+  `libstring/libstring_test.go`, and `limiter_test.go`.
+- Hosted CI runs formatting, vet, race-enabled tests, module-integrity checks,
+  and static policy checks through `make check`.
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 
@@ -50,6 +59,12 @@
 - Blank or padded X-Real-IP values are trimmed or skipped before limiter keys are derived, allowing later configured lookup sources to be used.
 - Malformed proxy IP headers are skipped before limiter keys are derived, allowing later configured lookup sources to be used.
 - `RemoteAddr` parsing supports IPv4 and IPv6 host:port values before deriving limiter keys.
+- Keep request-derived storage bounded by both the 10,000-key LRU cap and the
+  fixed-length SHA-256 storage identifier.
+- Keep key component encoding length-prefixed so delimiter-containing values do
+  not share buckets accidentally.
+- Keep `check.yml` as the sole pinned, read-only workflow and disable persisted
+  checkout credentials.
 
 ## Agent workflow
 
