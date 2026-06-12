@@ -63,7 +63,8 @@ before limiter keys are derived.
 Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline, along with
-"malformed proxy IP headers" and "blank header-only request values".
+"malformed proxy IP headers" and "blank header-only request values". GitHub Actions
+runs the same `make check` baseline using the Go version in `go.mod`.
 
 ## What We Will Not Merge (For Now)
 

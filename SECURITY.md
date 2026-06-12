@@ -43,6 +43,10 @@ header value components.
 Blank header-only request values should not produce limiter keys when a limiter
 is configured to match any non-empty value for that header.
 
+GitHub Actions runs the same `make check` baseline as local development. Keep
+the workflow limited to Go tests and static checks unless a separate review
+documents a live service dependency.
+
 ## Dependency and Supply Chain Security
 
 Dependency updates should come from trusted package managers and should keep lockfiles in sync when lockfiles exist. Do not commit credentials, private keys, tokens, generated secrets, or machine-local configuration. If a vulnerability depends on a compromised package, typosquatting risk, insecure transitive dependency, or unsafe build step, include the package name, affected version, and the path through which it is used.

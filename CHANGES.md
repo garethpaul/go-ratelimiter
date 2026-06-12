@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-10
+
+- Added a GitHub Actions workflow that reads the Go version from `go.mod` and
+  runs the local `make check` baseline for pushes and pull requests.
+
 ## 2026-06-09
 
 - Skipped blank header-only request values before deriving limiter keys.

@@ -72,6 +72,8 @@ blank first header value matching, blank configured header values, blank header-
 and 429 responses remain in place. Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline.
+GitHub Actions uses the Go version from `go.mod` and runs the same `make check`
+baseline on pushes and pull requests.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -117,6 +119,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   configured header value handling.
 - See `docs/plans/2026-06-09-header-only-blank-request-values.md` for blank
   header-only request value handling.
+- See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions baseline.
 
 ## Contributing
 
