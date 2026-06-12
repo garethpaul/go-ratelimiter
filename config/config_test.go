@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ func TestLimiterRefillsMaxTokensPerTTL(t *testing.T) {
 		t.Fatal("first request unexpectedly reached the limit")
 	}
 
-	bucket := limiter.tokenBuckets["key"]
+	bucket := limiter.tokenBuckets[bucketStorageKey("key")]
 	if got, want := bucket.Limit(), rate.Limit(1); got != want {
 		t.Fatalf("refill rate = %v tokens/second, want %v", got, want)
 	}
@@ -88,13 +89,31 @@ func TestLimiterEvictsLeastRecentlyUsedKey(t *testing.T) {
 	limiter.LimitReached("oldest")
 	limiter.LimitReached("new")
 
-	if _, found := limiter.tokenBuckets["recent"]; found {
+	if _, found := limiter.tokenBuckets[bucketStorageKey("recent")]; found {
 		t.Fatal("least recently used key was retained")
 	}
-	if _, found := limiter.tokenBuckets["oldest"]; !found {
+	if _, found := limiter.tokenBuckets[bucketStorageKey("oldest")]; !found {
 		t.Fatal("recently accessed key was evicted")
 	}
 	if reached := limiter.LimitReached("recent"); reached {
 		t.Fatal("evicted key did not receive a fresh token bucket")
+	}
+}
+
+func TestLimiterStoresBoundedKeyIdentifiers(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	requestKey := string(make([]byte, 1<<20))
+
+	if reached := limiter.LimitReached(requestKey); reached {
+		t.Fatal("first request unexpectedly reached the limit")
+	}
+
+	if got := len(limiter.tokenBuckets); got != 1 {
+		t.Fatalf("tracked %d keys, want 1", got)
+	}
+	for storedKey := range limiter.tokenBuckets {
+		if got, want := len(storedKey), sha256.Size; got != want {
+			t.Fatalf("stored key length = %d, want %d", got, want)
+		}
 	}
 }

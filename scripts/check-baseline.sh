@@ -15,6 +15,8 @@ CI_WORKFLOW="$ROOT_DIR/.github/workflows/check.yml"
 CI_PLAN="$ROOT_DIR/docs/plans/2026-06-10-ci-baseline.md"
 KEY_CAP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-rate-limiter-key-cap.md"
 REFILL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-token-bucket-refill-semantics.md"
+KEY_ENCODING_PLAN="$ROOT_DIR/docs/plans/2026-06-12-bounded-key-encoding.md"
+CI_POLICY_PLAN="$ROOT_DIR/docs/plans/2026-06-12-ci-policy-hardening.md"
 
 require_file() {
   path=$1
@@ -25,8 +27,10 @@ require_file() {
 }
 
 for path in \
+  ".github/CODEOWNERS" \
   ".github/workflows/check.yml" \
   ".gitignore" \
+  "AGENTS.md" \
   "CHANGES.md" \
   "Makefile" \
   "README.md" \
@@ -53,6 +57,8 @@ for path in \
   "docs/plans/2026-06-10-ci-baseline.md" \
   "docs/plans/2026-06-10-rate-limiter-key-cap.md" \
   "docs/plans/2026-06-12-token-bucket-refill-semantics.md" \
+  "docs/plans/2026-06-12-bounded-key-encoding.md" \
+  "docs/plans/2026-06-12-ci-policy-hardening.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -61,6 +67,11 @@ makefile="$ROOT_DIR/Makefile"
 if ! grep -Eq '^\.PHONY: .*build.*check.*lint.*test|^\.PHONY: .*build.*lint.*test.*check' "$makefile" ||
   ! grep -Fq "lint test build: check" "$makefile"; then
   printf '%s\n' "Makefile must expose lint, test, build, and check gate targets." >&2
+  exit 1
+fi
+
+if ! grep -Fxq "go 1.25.11" "$ROOT_DIR/go.mod"; then
+  printf '%s\n' "go.mod must retain the patched Go 1.25.11 toolchain baseline." >&2
   exit 1
 fi
 
@@ -128,6 +139,14 @@ if ! grep -Fq 'l.Max <= 0 || l.TTL <= 0' "$ROOT_DIR/config/config.go" ||
   exit 1
 fi
 
+if ! grep -Fq "TestLimiterStoresBoundedKeyIdentifiers" "$ROOT_DIR/config/config_test.go" ||
+  ! grep -Fq "sha256.Sum256" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "TestLimitByKeysKeepsDelimitedComponentsDistinct" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "func encodeKeys" "$ROOT_DIR/limiter.go"; then
+  printf '%s\n' "Limiter keys must use bounded storage identifiers and collision-safe component encoding." >&2
+  exit 1
+fi
+
 if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go" ||
   ! grep -Fq "net.ParseIP(host)" "$ROOT_DIR/libstring/libstring.go" ||
   ! grep -Fq "ipAddrFromRemoteAddr(r.RemoteAddr); ip != \"\"" "$ROOT_DIR/libstring/libstring.go"; then
@@ -164,19 +183,58 @@ if ! grep -Fq 'strings.TrimSpace(requestValue) != ""' "$ROOT_DIR/limiter.go"; th
   exit 1
 fi
 
-if ! grep -Fq "workflow_dispatch:" "$CI_WORKFLOW" ||
-  ! grep -Fq "contents: read" "$CI_WORKFLOW" ||
-  ! grep -Fq "cancel-in-progress: true" "$CI_WORKFLOW" ||
-  ! grep -Fq "runs-on: ubuntu-24.04" "$CI_WORKFLOW" ||
-  ! grep -Fq "timeout-minutes: 10" "$CI_WORKFLOW" ||
-  ! grep -Fq "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" "$CI_WORKFLOW" ||
-  ! grep -Fq "actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c" "$CI_WORKFLOW" ||
-  ! grep -Fq "go-version-file: go.mod" "$CI_WORKFLOW" ||
-  ! grep -Fq "make check" "$CI_WORKFLOW"; then
-  printf '%s\n' "GitHub Actions must keep the pinned, bounded Go race-test contract." >&2
+workflow_files=$(find "$ROOT_DIR/.github/workflows" -type f -print)
+if [ "$workflow_files" != "$CI_WORKFLOW" ]; then
+  printf '%s\n' "check.yml must remain the only hosted workflow." >&2
   exit 1
 fi
 
+expected_workflow=$(mktemp "${TMPDIR:-/tmp}/go-ratelimiter-check.XXXXXX")
+trap 'rm -f "$expected_workflow"' EXIT HUP INT TERM
+cat >"$expected_workflow" <<'EOF'
+name: Check
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run baseline
+        run: make check
+EOF
+
+if ! cmp -s "$expected_workflow" "$CI_WORKFLOW"; then
+  printf '%s\n' "GitHub Actions must match the canonical pinned, credential-free Go race-test contract." >&2
+  exit 1
+fi
+
+if [ "$(cat "$ROOT_DIR/.github/CODEOWNERS")" != "* @garethpaul" ]; then
+  printf '%s\n' "CODEOWNERS must assign repository-wide ownership." >&2
+  exit 1
+fi
 if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "GitHub Actions" "$ROOT_DIR/README.md" ||
   ! grep -Fq "make lint" "$ROOT_DIR/README.md" ||
@@ -289,4 +347,16 @@ if ! grep -Fq "status: completed" "$REFILL_PLAN" ||
   exit 1
 fi
 
+if ! grep -Fq "status: completed" "$KEY_ENCODING_PLAN" ||
+  ! grep -Fq "Hostile key mutations" "$KEY_ENCODING_PLAN"; then
+  printf '%s\n' "Bounded key encoding plan must record completed mutation verification." >&2
+  exit 1
+fi
+
+if ! grep -Fq "status: completed" "$CI_POLICY_PLAN" ||
+  ! grep -Fq "persist-credentials: false" "$CI_POLICY_PLAN" ||
+  ! grep -Fq "hostile workflow mutations" "$CI_POLICY_PLAN"; then
+  printf '%s\n' "CI policy hardening plan must record completed mutation verification." >&2
+  exit 1
+fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."

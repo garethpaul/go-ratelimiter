@@ -34,7 +34,7 @@ Additional scan context:
 ### Prerequisites
 
 - Git
-- Go 1.25 or a compatible modern Go toolchain
+- Go 1.25.11 or a compatible patched Go toolchain
 
 ### Setup
 
@@ -76,7 +76,10 @@ remain in place. Keep the exact guard phrases
 "blank X-Forwarded-For", "blank X-Real-IP", "malformed RemoteAddr", and
 "IPv6 RemoteAddr" visible for the static baseline.
 GitHub Actions installs the exact Go version from `go.mod` and runs formatting,
-vet, race-enabled tests, module-integrity checks, and static guardrails.
+vet, race-enabled tests, module-integrity checks, and static guardrails. Tracked
+buckets use a 10,000-entry LRU cap and fixed-length SHA-256 identifiers, while
+length-prefixed component encoding keeps delimiter-containing key parts in
+independent buckets.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -127,6 +130,10 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-10-ci-baseline.md` for the GitHub Actions baseline.
 - See `docs/plans/2026-06-10-rate-limiter-key-cap.md` for bounded token-bucket
   storage and least-recently-used eviction.
+- See `docs/plans/2026-06-12-bounded-key-encoding.md` for fixed-length storage
+  identifiers and collision-safe component encoding.
+- See `docs/plans/2026-06-12-ci-policy-hardening.md` for canonical hosted
+  workflow enforcement.
 
 ## Contributing
 

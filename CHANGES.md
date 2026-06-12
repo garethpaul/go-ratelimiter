@@ -2,6 +2,12 @@
 
 ## 2026-06-12
 
+- Encoded limiter key components unambiguously and stored only fixed-length
+  SHA-256 identifiers so request-controlled key bytes remain bounded.
+- Disabled persisted checkout credentials, enforced one canonical hosted
+  workflow, and added repository-wide ownership.
+- Raised the hosted and documented Go toolchain from 1.25.3 to 1.25.11 after
+  `govulncheck` found three reachable standard-library vulnerabilities.
 - Corrected token-bucket refill rates to restore `Max` requests across each
   `TTL` instead of restoring only one request per complete duration.
 - Made non-positive and platform-unrepresentable limiter configurations fail
@@ -13,7 +19,7 @@
 
 - Bounded each limiter to 10,000 tracked keys with least-recently-used eviction
   and race-tested capacity coverage.
-- Added a pinned, least-privilege Go 1.25.3 workflow with vet, race-enabled
+- Added a pinned, least-privilege Go 1.25.11 workflow with vet, race-enabled
   tests, module-integrity checks, and static guardrails.
 
 ## 2026-06-09

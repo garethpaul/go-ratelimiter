@@ -23,4 +23,4 @@ guard was hosted CI that runs the same gate for pushes and pull requests.
 
 - `make check`
 - `git diff --check`
-- Hosted Go 1.25.3 GitHub Actions run
+- Hosted Go 1.25.11 GitHub Actions run

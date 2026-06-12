@@ -2,6 +2,7 @@ package config
 
 import (
 	"container/list"
+	"crypto/sha256"
 	"sync"
 	"time"
 
@@ -77,9 +78,10 @@ func (l *Limiter) LimitReached(key string) bool {
 		return true
 	}
 
-	bucket, found := l.tokenBuckets[key]
+	storageKey := bucketStorageKey(key)
+	bucket, found := l.tokenBuckets[storageKey]
 	if found {
-		l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[key])
+		l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[storageKey])
 	} else {
 		if l.maxTrackedKeys > 0 && len(l.tokenBuckets) >= l.maxTrackedKeys {
 			oldest := l.tokenBucketOrder.Back()
@@ -91,9 +93,14 @@ func (l *Limiter) LimitReached(key string) bool {
 
 		refillRate := rate.Limit(float64(l.Max) / l.TTL.Seconds())
 		bucket = rate.NewLimiter(refillRate, int(l.Max))
-		l.tokenBuckets[key] = bucket
-		l.tokenBucketEntries[key] = l.tokenBucketOrder.PushFront(key)
+		l.tokenBuckets[storageKey] = bucket
+		l.tokenBucketEntries[storageKey] = l.tokenBucketOrder.PushFront(storageKey)
 	}
 
 	return !bucket.AllowN(time.Now(), 1)
+}
+
+func bucketStorageKey(key string) string {
+	digest := sha256.Sum256([]byte(key))
+	return string(digest[:])
 }

@@ -62,7 +62,9 @@ limiter keys are derived.
 The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
 Each limiter retains at most 10,000 request-derived keys and evicts the least
-recently used bucket before admitting another.
+recently used bucket before admitting another. Stored identifiers are
+fixed-length hashes of length-prefixed components, bounding retained key bytes
+and keeping delimiter-containing values distinct.
 Valid token buckets refill `Max` requests across each `TTL`; non-positive or
 platform-unrepresentable limits reject requests without tracking keys.
 Keep the exact guard phrases
@@ -71,6 +73,8 @@ Keep the exact guard phrases
 "malformed proxy IP headers" and "blank header-only request values". GitHub Actions
 runs formatting, vet, race-enabled tests, module-integrity checks, and static
 guardrails using the Go version in `go.mod`.
+The hosted workflow is pinned, read-only, credential-free after checkout, and
+enforced as the repository's sole workflow by the local baseline.
 
 ## What We Will Not Merge (For Now)
 
