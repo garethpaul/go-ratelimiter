@@ -17,6 +17,7 @@ KEY_CAP_PLAN="$ROOT_DIR/docs/plans/2026-06-10-rate-limiter-key-cap.md"
 REFILL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-token-bucket-refill-semantics.md"
 KEY_ENCODING_PLAN="$ROOT_DIR/docs/plans/2026-06-12-bounded-key-encoding.md"
 CI_POLICY_PLAN="$ROOT_DIR/docs/plans/2026-06-12-ci-policy-hardening.md"
+HEADER_IDEMPOTENCE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-idempotent-response-headers.md"
 
 require_file() {
   path=$1
@@ -59,6 +60,7 @@ for path in \
   "docs/plans/2026-06-12-token-bucket-refill-semantics.md" \
   "docs/plans/2026-06-12-bounded-key-encoding.md" \
   "docs/plans/2026-06-12-ci-policy-hardening.md" \
+  "docs/plans/2026-06-12-idempotent-response-headers.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -357,6 +359,37 @@ if ! grep -Fq "status: completed" "$CI_POLICY_PLAN" ||
   ! grep -Fq "persist-credentials: false" "$CI_POLICY_PLAN" ||
   ! grep -Fq "hostile workflow mutations" "$CI_POLICY_PLAN"; then
   printf '%s\n' "CI policy hardening plan must record completed mutation verification." >&2
+  exit 1
+fi
+
+completed_statuses=$(grep -c '^status: completed$' "$HEADER_IDEMPOTENCE_PLAN" || true)
+all_statuses=$(grep -c '^status:' "$HEADER_IDEMPOTENCE_PLAN" || true)
+header_verification=$(awk '
+  /^## Verification Completed$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$HEADER_IDEMPOTENCE_PLAN")
+
+if [ "$completed_statuses" -ne 1 ] || [ "$all_statuses" -ne 1 ]; then
+  printf '%s\n' "Idempotent response-header plan must record exactly one completed status." >&2
+  exit 1
+fi
+
+for evidence in \
+  'go test -race -count=1 ./...' \
+  'push run `27393483036`' \
+  'pull-request run `27393485015`' \
+  'push run `27393504527`' \
+  'CodeQL run `27402321986`' \
+  'Mutations restoring `Header.Add`'; do
+  if ! printf '%s\n' "$header_verification" | grep -Fq "$evidence"; then
+    printf '%s\n' "Idempotent response-header plan must record actual completed verification." >&2
+    exit 1
+  fi
+done
+
+if printf '%s\n' "$header_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Idempotent response-header verification must not contain placeholders." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."
