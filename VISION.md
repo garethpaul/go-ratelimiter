@@ -23,6 +23,7 @@ Priority:
 - Keep middleware-owned response metadata single-valued and authoritative
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Preserve configured header matching when a request has a blank first header value
+- Preserve one token charge when duplicate configured header values match
 - Preserve header-only matching only for non-empty request header values
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing
@@ -60,6 +61,8 @@ Configured header matching checks all request values so a blank first header
 value cannot hide a later configured match.
 The blank configured header values guard skips empty configured values before
 limiter keys are derived.
+The duplicate configured header values guard derives one key and charges one
+token for each distinct matched value.
 The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
 Each limiter retains at most 10,000 request-derived keys and evicts the least

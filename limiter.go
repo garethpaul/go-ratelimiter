@@ -166,12 +166,17 @@ func matchingHeaderValues(r *http.Request, headerKey string, headerValues []stri
 	}
 
 	matchedValues := make([]string, 0, len(headerValues))
+	seenValues := make(map[string]struct{}, len(headerValues))
 	for _, headerValue := range headerValues {
 		if strings.TrimSpace(headerValue) == "" {
 			continue
 		}
+		if _, seen := seenValues[headerValue]; seen {
+			continue
+		}
 		if libstring.StringInSlice(requestValues, headerValue) {
 			matchedValues = append(matchedValues, headerValue)
+			seenValues[headerValue] = struct{}{}
 		}
 	}
 	return matchedValues

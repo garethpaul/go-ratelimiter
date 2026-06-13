@@ -18,6 +18,7 @@ REFILL_PLAN="$ROOT_DIR/docs/plans/2026-06-12-token-bucket-refill-semantics.md"
 KEY_ENCODING_PLAN="$ROOT_DIR/docs/plans/2026-06-12-bounded-key-encoding.md"
 CI_POLICY_PLAN="$ROOT_DIR/docs/plans/2026-06-12-ci-policy-hardening.md"
 HEADER_IDEMPOTENCE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-idempotent-response-headers.md"
+HEADER_DEDUPLICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-deduplicate-header-values.md"
 
 require_file() {
   path=$1
@@ -61,6 +62,7 @@ for path in \
   "docs/plans/2026-06-12-bounded-key-encoding.md" \
   "docs/plans/2026-06-12-ci-policy-hardening.md" \
   "docs/plans/2026-06-12-idempotent-response-headers.md" \
+  "docs/plans/2026-06-13-deduplicate-header-values.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -103,11 +105,13 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysHeaderValueMatchSkipsBlankFirstRequestValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysHeaderValueMatchSkipsBlankConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysDeduplicatesConfiguredHeaderValues" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysHeaderOnlySkipsBlankRequestValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysSkipsMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestBuildKeysFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
@@ -180,6 +184,13 @@ if ! grep -Fq 'strings.TrimSpace(headerValue) == ""' "$ROOT_DIR/limiter.go"; the
   exit 1
 fi
 
+if ! grep -Fq 'seenValues := make(map[string]struct{}, len(headerValues))' "$ROOT_DIR/limiter.go" ||
+  ! grep -Fq 'if _, seen := seenValues[headerValue]; seen {' "$ROOT_DIR/limiter.go" ||
+  ! grep -Fq 'seenValues[headerValue] = struct{}{}' "$ROOT_DIR/limiter.go"; then
+  printf '%s\n' "Configured header values must be deduplicated before limiter keys are derived." >&2
+  exit 1
+fi
+
 if ! grep -Fq 'strings.TrimSpace(requestValue) != ""' "$ROOT_DIR/limiter.go"; then
   printf '%s\n' "Header-only matching must skip blank request header values before deriving keys." >&2
   exit 1
@@ -248,6 +259,7 @@ if ! grep -Fq "go test ./..." "$ROOT_DIR/README.md" ||
   ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank first header value" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank configured header values" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "duplicate configured header values" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank header-only request values" "$ROOT_DIR/README.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/README.md" ||
   ! grep -Fq "10,000 tracked keys" "$ROOT_DIR/README.md" ||
@@ -267,6 +279,7 @@ if ! grep -Fq "scripts/check-baseline.sh" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "malformed proxy IP headers" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank first header value" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank configured header values" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "duplicate configured header values" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank header-only request values" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "blank X-Forwarded-For" "$ROOT_DIR/VISION.md" ||
   ! grep -Fq "10,000 request-derived keys" "$ROOT_DIR/VISION.md" ||
@@ -390,6 +403,37 @@ done
 
 if printf '%s\n' "$header_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
   printf '%s\n' "Idempotent response-header verification must not contain placeholders." >&2
+  exit 1
+fi
+
+dedupe_completed_statuses=$(grep -c '^status: completed$' "$HEADER_DEDUPLICATION_PLAN" || true)
+dedupe_all_statuses=$(grep -c '^status:' "$HEADER_DEDUPLICATION_PLAN" || true)
+dedupe_verification=$(awk '
+  /^## Verification Completed$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$HEADER_DEDUPLICATION_PLAN")
+
+if [ "$dedupe_completed_statuses" -ne 1 ] || [ "$dedupe_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Header-value deduplication plan must record exactly one completed status." >&2
+  exit 1
+fi
+
+for evidence in \
+  'focused duplicate-value tests passed' \
+  'all four Make gates passed' \
+  'deduplication removal mutation failed' \
+  'key-test removal mutation failed' \
+  'middleware-test removal mutation failed' \
+  'hosted pull-request and CodeQL snapshot'; do
+  if ! printf '%s\n' "$dedupe_verification" | grep -Fq "$evidence"; then
+    printf '%s\n' "Header-value deduplication plan must record actual completed verification." >&2
+    exit 1
+  fi
+done
+
+if printf '%s\n' "$dedupe_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Header-value deduplication verification must not contain placeholders." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."

@@ -1,6 +1,6 @@
 # Deduplicate Configured Header Values
 
-status: in_progress
+status: completed
 
 ## Context
 
@@ -41,3 +41,25 @@ the behavior of distinct configured values or distinct header names.
 Only duplicate configured values change behavior. Distinct values retain their
 existing order and bucket identity. Rollback restores repeated charging; there
 is no data migration, external storage, or public type change.
+
+## Work Completed
+
+- Added stable first-occurrence deduplication for matched configured header
+  values.
+- Added direct key-construction coverage for repeated configured values.
+- Added middleware coverage proving the first request succeeds and the second
+  request reaches the one-token limit.
+- Extended the static baseline and synchronized project documentation.
+
+## Verification Completed
+
+- The focused duplicate-value tests passed.
+- The deduplication removal mutation failed both behavioral tests, producing two
+  identical key sets and rejecting the first request with HTTP 429.
+- The key-test removal mutation failed the focused-test contract.
+- The middleware-test removal mutation failed the focused-test contract.
+- Uncached and race-enabled tests, vet, build, module verification, and module
+  tidiness passed.
+- The all four Make gates passed with the maintained baseline.
+- The hosted pull-request and CodeQL snapshot is recorded separately after push;
+  this plan claims only the completed pre-push verification above.
