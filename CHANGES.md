@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-13
+
+- Deduplicated repeated configured header values before deriving limiter keys so
+  one request cannot charge the same token bucket multiple times.
+
 ## 2026-06-12
 
 - Made rate-limit metadata and rejection content types replace stale response

@@ -131,6 +131,23 @@ func TestBuildKeysHeaderValueMatchSkipsBlankConfiguredValue(t *testing.T) {
 	}
 }
 
+func TestBuildKeysDeduplicatesConfiguredHeaderValues(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.Headers = map[string][]string{"X-Plan": {"gold", "gold"}}
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Plan", "gold")
+
+	keys := BuildKeys(limiter, request)
+
+	if len(keys) != 1 {
+		t.Fatalf("expected one key set for duplicate configured values, got %d: %#v", len(keys), keys)
+	}
+	if got, want := keys[0], []string{"203.0.113.10", "/limited", "X-Plan", "gold"}; !equalStrings(got, want) {
+		t.Fatalf("keys = %#v, want %#v", got, want)
+	}
+}
+
 func TestBuildKeysHeaderOnlySkipsBlankRequestValue(t *testing.T) {
 	limiter := NewLimiter(10, time.Minute)
 	limiter.Headers = map[string][]string{"X-Plan": nil}
@@ -184,6 +201,29 @@ func TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty(t *testing.T) 
 	}
 	if second.Header().Get("X-Rate-Limit-Limit") != "1" {
 		t.Fatalf("missing rate limit header: %#v", second.Header())
+	}
+}
+
+func TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.Headers = map[string][]string{"X-Plan": {"gold", "gold"}}
+	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Plan", "gold")
+
+	first := httptest.NewRecorder()
+	handler.ServeHTTP(first, request)
+	if first.Code != http.StatusNoContent {
+		t.Fatalf("first response status = %d, want %d", first.Code, http.StatusNoContent)
+	}
+
+	second := httptest.NewRecorder()
+	handler.ServeHTTP(second, request)
+	if second.Code != http.StatusTooManyRequests {
+		t.Fatalf("second response status = %d, want %d", second.Code, http.StatusTooManyRequests)
 	}
 }
 
