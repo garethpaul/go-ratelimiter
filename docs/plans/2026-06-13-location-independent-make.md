@@ -1,6 +1,6 @@
 # Location-Independent Go Verification
 
-status: planned
+status: completed
 
 ## Context
 
@@ -40,8 +40,22 @@ caller-relative recipe; no runtime state or persistent migration exists.
 
 ## Work Completed
 
-Pending implementation.
+- Derived the repository root from the loaded Makefile and invoked the existing
+  checker through its absolute repository path.
+- Extended the baseline with rooted-Makefile, completed-plan, external-run, and
+  synchronized-guidance contracts.
+- Preserved limiter behavior, tests, module files, workflow policy, and Go
+  toolchain requirements unchanged.
 
 ## Verification Completed
 
-Pending implementation and validation. Run `make check` before completion.
+- Focused and full uncached tests, race tests, vet, and module tidiness passed.
+- All four Make gates (`make lint`, `make test`, `make build`, and `make check`)
+  passed at repository root and from /tmp through the absolute Makefile path.
+- The root-derivation mutation failed.
+- The checker-command mutation failed.
+- The plan-status mutation failed.
+- The plan-evidence mutation failed.
+- The documentation mutation failed.
+- Formatting, shell syntax, `git diff --check`, exact intended-path review,
+  added-line secret scanning, and generated-artifact inspection passed.

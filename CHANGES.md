@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Made Go verification independent of the caller's working directory by
+  resolving the baseline checker from the loaded Makefile.
 - Made rejected multi-key preflight leave tracked bucket state unchanged until
   every existing bucket confirms capacity.
 - Made multi-key request accounting atomic so a rejected request cannot consume
