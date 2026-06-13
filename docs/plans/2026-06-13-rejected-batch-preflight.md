@@ -1,6 +1,6 @@
 # Keep Rejected Batch Preflight Side-Effect Free
 
-status: planned
+status: completed
 
 ## Context
 
@@ -46,8 +46,24 @@ untouched. Rollback restores eager resolution; no persistent migration exists.
 
 ## Work Completed
 
-Pending implementation.
+- Split batch resolution into existing-bucket capacity preflight followed by
+  accepted-request LRU touches and missing-bucket creation.
+- Protected requested existing buckets from accepted-batch eviction by moving
+  them to the LRU front before new keys are admitted.
+- Added focused no-allocation and no-eviction regressions plus static,
+  documentation, and completed-plan contracts.
 
 ## Verification Completed
 
-Pending implementation and verification.
+- The focused rejected-batch tests passed.
+- Uncached and race-enabled tests, vet, module tidiness, formatting, shell
+  syntax, and `git diff --check` passed.
+- All four Make gates passed.
+- The eager creation mutation failed after restoring bucket creation before
+  existing capacity preflight.
+- The no-allocation test mutation failed after removing its regression.
+- The no-eviction test mutation failed after removing its regression.
+- Intended-file artifact and secret scans passed.
+- The hosted pull-request and code-scanning snapshot is a post-push evidence
+  step; its bounded exact-head result is recorded after the implementation
+  commit.

@@ -100,16 +100,31 @@ func (l *Limiter) LimitReachedForKeys(keys []string) bool {
 		return true
 	}
 
-	buckets := make([]*rate.Limiter, 0, len(storageKeys))
+	existingBuckets := make(map[string]*rate.Limiter, len(storageKeys))
 	for _, storageKey := range storageKeys {
-		bucket := l.bucketForStorageKey(storageKey)
-		buckets = append(buckets, bucket)
+		if bucket, found := l.tokenBuckets[storageKey]; found {
+			existingBuckets[storageKey] = bucket
+		}
 	}
 	now := time.Now()
-	for _, bucket := range buckets {
+	for _, bucket := range existingBuckets {
 		if bucket.TokensAt(now) < 1 {
 			return true
 		}
+	}
+
+	for _, storageKey := range storageKeys {
+		if _, found := existingBuckets[storageKey]; found {
+			l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[storageKey])
+		}
+	}
+	buckets := make([]*rate.Limiter, 0, len(storageKeys))
+	for _, storageKey := range storageKeys {
+		bucket, found := existingBuckets[storageKey]
+		if !found {
+			bucket = l.bucketForStorageKey(storageKey)
+		}
+		buckets = append(buckets, bucket)
 	}
 	for _, bucket := range buckets {
 		_ = bucket.AllowN(now, 1)
