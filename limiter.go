@@ -21,10 +21,14 @@ func NewLimiter(max int64, ttl time.Duration) *config.Limiter {
 // It returns HTTPError when limit is exceeded.
 func LimitByKeys(limiter *config.Limiter, keys []string) *errors.HTTPError {
 	if limiter.LimitReached(encodeKeys(keys)) {
-		return &errors.HTTPError{Message: limiter.Message, StatusCode: limiter.StatusCode}
+		return limitError(limiter)
 	}
 
 	return nil
+}
+
+func limitError(limiter *config.Limiter) *errors.HTTPError {
+	return &errors.HTTPError{Message: limiter.Message, StatusCode: limiter.StatusCode}
 }
 
 func encodeKeys(keys []string) string {
@@ -37,17 +41,15 @@ func encodeKeys(keys []string) string {
 	return encoded.String()
 }
 
-// LimitByRequest builds keys based on http.Request struct,
-// loops through all the keys, and check if any one of them returns HTTPError.
+// LimitByRequest builds request keys and checks all derived buckets atomically.
 func LimitByRequest(limiter *config.Limiter, r *http.Request) *errors.HTTPError {
 	sliceKeys := BuildKeys(limiter, r)
-
-	// Loop sliceKeys and check if one of them has error.
+	encodedKeys := make([]string, 0, len(sliceKeys))
 	for _, keys := range sliceKeys {
-		httpError := LimitByKeys(limiter, keys)
-		if httpError != nil {
-			return httpError
-		}
+		encodedKeys = append(encodedKeys, encodeKeys(keys))
+	}
+	if limiter.LimitReachedForKeys(encodedKeys) {
+		return limitError(limiter)
 	}
 
 	return nil

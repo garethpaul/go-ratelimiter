@@ -227,6 +227,40 @@ func TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce(t *testing.T) {
 	}
 }
 
+func TestLimitHandlerDoesNotPartiallyChargeRejectedMultiKeyRequest(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.Headers = map[string][]string{"X-Plan": {"gold", "silver"}}
+	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := func(values ...string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, "/limited", nil)
+		r.RemoteAddr = "203.0.113.10:54321"
+		for _, value := range values {
+			r.Header.Add("X-Plan", value)
+		}
+		return r
+	}
+
+	silver := httptest.NewRecorder()
+	handler.ServeHTTP(silver, request("silver"))
+	if silver.Code != http.StatusNoContent {
+		t.Fatalf("silver response status = %d, want %d", silver.Code, http.StatusNoContent)
+	}
+
+	combined := httptest.NewRecorder()
+	handler.ServeHTTP(combined, request("gold", "silver"))
+	if combined.Code != http.StatusTooManyRequests {
+		t.Fatalf("combined response status = %d, want %d", combined.Code, http.StatusTooManyRequests)
+	}
+
+	gold := httptest.NewRecorder()
+	handler.ServeHTTP(gold, request("gold"))
+	if gold.Code != http.StatusNoContent {
+		t.Fatalf("gold response status = %d, want %d", gold.Code, http.StatusNoContent)
+	}
+}
+
 func TestSetResponseHeadersReplacesExistingValues(t *testing.T) {
 	limiter := NewLimiter(10, time.Minute)
 	recorder := httptest.NewRecorder()

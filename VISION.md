@@ -24,6 +24,7 @@ Priority:
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
 - Preserve configured header matching when a request has a blank first header value
 - Preserve one token charge when duplicate configured header values match
+- Preserve available bucket capacity when another key rejects a multi-key request
 - Preserve header-only matching only for non-empty request header values
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing

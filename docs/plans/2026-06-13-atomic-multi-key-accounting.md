@@ -1,6 +1,6 @@
 # Make Multi-Key Request Accounting Atomic
 
-status: planned
+status: completed
 
 ## Context
 
@@ -48,8 +48,25 @@ or external storage change.
 
 ## Work Completed
 
-Pending implementation.
+- Added `LimitReachedForKeys` to deduplicate bucket identities, resolve them
+  under one lock, preflight capacity at one timestamp, and consume only after
+  every bucket can admit the request.
+- Routed `LimitReached`, `LimitByKeys`, and `LimitByRequest` through the shared
+  accounting path while preserving empty derived-key bypass behavior.
+- Added config-level and middleware regressions for partial-consumption safety,
+  plus an empty-batch compatibility regression.
+- Extended the maintained static baseline and synchronized the README, vision,
+  and change history.
 
 ## Verification Completed
 
-Pending implementation and verification.
+- Focused atomic-accounting and empty-batch tests passed.
+- Removing capacity preflight failed both config and middleware regressions.
+- Restoring sequential request charging failed the middleware regression after
+  the rejected combined request drained the otherwise available bucket.
+- Removing the middleware regression tripped the maintained baseline contract.
+- Uncached and race-enabled tests, vet, build, module verification, module
+  tidiness, formatting, shell syntax, and diff checks passed.
+- All four Make gates passed with the maintained baseline.
+- Hosted pull-request and CodeQL evidence is recorded separately after push;
+  this plan claims only the completed local verification above.
