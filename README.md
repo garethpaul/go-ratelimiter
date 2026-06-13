@@ -111,6 +111,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   token charge per request.
 - Multi-key requests preflight every derived bucket so rejection by one bucket
   does not consume available capacity from another bucket.
+- Rejected multi-key requests leave tracked-key and LRU state unchanged; missing
+  buckets are created only after existing capacity succeeds.
 - Blank header-only request values are skipped before limiter keys are derived.
 - Each limiter retains at most 10,000 tracked keys and evicts the least recently
   used bucket before admitting another request-derived key.

@@ -19,6 +19,7 @@ KEY_ENCODING_PLAN="$ROOT_DIR/docs/plans/2026-06-12-bounded-key-encoding.md"
 CI_POLICY_PLAN="$ROOT_DIR/docs/plans/2026-06-12-ci-policy-hardening.md"
 HEADER_IDEMPOTENCE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-idempotent-response-headers.md"
 HEADER_DEDUPLICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-deduplicate-header-values.md"
+REJECTED_PREFLIGHT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-rejected-batch-preflight.md"
 
 require_file() {
   path=$1
@@ -63,6 +64,7 @@ for path in \
   "docs/plans/2026-06-12-ci-policy-hardening.md" \
   "docs/plans/2026-06-12-idempotent-response-headers.md" \
   "docs/plans/2026-06-13-deduplicate-header-values.md" \
+  "docs/plans/2026-06-13-rejected-batch-preflight.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -135,6 +137,37 @@ if ! grep -Fq "func (l *Limiter) LimitReachedForKeys" "$ROOT_DIR/config/config.g
   printf '%s\n' "Multi-key requests must preflight every bucket before consuming any tokens." >&2
   exit 1
 fi
+
+python3 - "$ROOT_DIR/config/config.go" "$ROOT_DIR/config/config_test.go" <<'PY'
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1]).read_text()
+tests = Path(sys.argv[2]).read_text()
+batch = source[source.index("func (l *Limiter) LimitReachedForKeys"):source.index("func (l *Limiter) bucketForStorageKey")]
+required = (
+    "existingBuckets := make(map[string]*rate.Limiter, len(storageKeys))",
+    "if bucket, found := l.tokenBuckets[storageKey]; found",
+    "for _, bucket := range existingBuckets",
+    "l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[storageKey])",
+    "if !found {",
+    "bucket = l.bucketForStorageKey(storageKey)",
+)
+if any(item not in batch for item in required):
+    raise SystemExit("Rejected batches must preflight existing buckets before creating or touching tracked state.")
+if not (batch.index("for _, bucket := range existingBuckets") <
+        batch.index("l.tokenBucketOrder.MoveToFront") <
+        batch.index("bucket = l.bucketForStorageKey(storageKey)")):
+    raise SystemExit("Existing capacity preflight must precede LRU touches and missing-bucket creation.")
+required_tests = (
+    "TestLimiterRejectedBatchDoesNotAllocateMissingKeys",
+    "TestLimiterRejectedBatchDoesNotEvictTrackedKeys",
+    'bucketStorageKey("new")',
+    'bucketStorageKey("unrelated")',
+)
+if any(item not in tests for item in required_tests):
+    raise SystemExit("Rejected-batch state preservation must retain focused allocation and eviction regressions.")
+PY
 
 if ! grep -Fq "defaultMaxTrackedKeys = 10000" "$ROOT_DIR/config/config.go" ||
   ! grep -Fq "list.New()" "$ROOT_DIR/config/config.go" ||
@@ -444,6 +477,46 @@ done
 
 if printf '%s\n' "$dedupe_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
   printf '%s\n' "Header-value deduplication verification must not contain placeholders." >&2
+  exit 1
+fi
+
+preflight_completed_statuses=$(grep -c '^status: completed$' "$REJECTED_PREFLIGHT_PLAN" || true)
+preflight_all_statuses=$(grep -c '^status:' "$REJECTED_PREFLIGHT_PLAN" || true)
+preflight_verification=$(awk '
+  /^## Verification Completed$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$REJECTED_PREFLIGHT_PLAN")
+
+if [ "$preflight_completed_statuses" -ne 1 ] || [ "$preflight_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Rejected-batch preflight plan must record exactly one completed status." >&2
+  exit 1
+fi
+
+for evidence in \
+  'focused rejected-batch tests passed' \
+  'All four Make gates passed' \
+  'eager creation mutation failed' \
+  'no-allocation test mutation failed' \
+  'no-eviction test mutation failed' \
+  'hosted pull-request and code-scanning snapshot'; do
+  if ! printf '%s\n' "$preflight_verification" | grep -Fq "$evidence"; then
+    printf '%s\n' "Rejected-batch preflight plan must record actual completed verification." >&2
+    exit 1
+  fi
+done
+
+if printf '%s\n' "$preflight_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Rejected-batch preflight verification must not contain placeholders." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Rejected multi-key requests leave tracked-key and LRU state unchanged" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "Rejected multi-key preflight should not allocate, evict, or reorder tracked buckets" "$ROOT_DIR/SECURITY.md" ||
+  ! grep -Fq "Keep rejected multi-key preflight side-effect free" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "Made rejected multi-key preflight leave tracked bucket state unchanged" "$ROOT_DIR/CHANGES.md" ||
+  ! grep -Fq "Keep rejected multi-key preflight free of allocation and eviction side effects" "$ROOT_DIR/AGENTS.md"; then
+  printf '%s\n' "Project guidance must document side-effect-free rejected-batch preflight." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."
