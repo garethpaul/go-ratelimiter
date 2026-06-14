@@ -1,6 +1,6 @@
 # Empty Configuration Fallback
 
-status: planned
+status: completed
 
 ## Context
 
@@ -27,13 +27,15 @@ derive no keys, and bypass rate limiting.
 - Do not change proxy IP selection, path construction, or response headers.
 - Do not redefine non-empty method, header, or Basic Auth filters.
 
-## Verification Plan
+## Verification Completed
 
-- Run focused empty-configuration tests, uncached full tests, race tests, vet,
-  build, module verification, and no-change module tidy.
-- Run all four Make gates from the repository root and `make check` through the
-  absolute Makefile path from `/tmp`.
-- Reject mutations that reactivate empty method/header/auth constraints, remove
-  middleware coverage, or falsify completed plan evidence.
-- Audit formatting, shell syntax, exact diff, generated artifacts, and intended
-  changed lines for credentials before committing.
+- Focused empty-constraint key and middleware tests passed.
+- Uncached full tests, race tests, vet, build, module verification, and
+  no-change module tidy passed.
+- All four Make gates passed from the repository root, and the absolute
+  Makefile path passed from `/tmp`.
+- Eight isolated mutations were rejected: nil-based method, header, and Basic
+  Auth activation, default-key-test removal, mixed-filter-test removal,
+  middleware-test removal, stale plan status, and missing plan evidence.
+- `gofmt`, shell syntax, `git diff --check`, exact intended-path review,
+  generated-artifact inspection, and changed-line credential scanning passed.

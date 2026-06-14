@@ -1,5 +1,8 @@
 # Changes
 
+- Prevented empty limiter constraint collections from bypassing the default
+  remote-IP/path rate limit.
+
 ## 2026-06-13
 
 - Made Go verification independent of the caller's working directory by
