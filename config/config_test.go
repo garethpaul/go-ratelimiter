@@ -121,6 +121,44 @@ func TestLimiterRejectsInvalidConfigurationWithoutTrackingKeys(t *testing.T) {
 	}
 }
 
+func TestDirectlyConfiguredLimiterInitializesAccountingState(t *testing.T) {
+	limiter := &Limiter{Max: 1, TTL: time.Hour}
+
+	if reached := limiter.LimitReached("client"); reached {
+		t.Fatal("first directly configured request unexpectedly reached the limit")
+	}
+	if reached := limiter.LimitReached("client"); !reached {
+		t.Fatal("second directly configured request unexpectedly bypassed the limit")
+	}
+
+	if got := len(limiter.tokenBuckets); got != 1 {
+		t.Fatalf("tracked %d buckets, want 1", got)
+	}
+	if got := limiter.tokenBucketOrder.Len(); got != 1 {
+		t.Fatalf("LRU order contains %d buckets, want 1", got)
+	}
+	if got := len(limiter.tokenBucketEntries); got != 1 {
+		t.Fatalf("LRU index contains %d buckets, want 1", got)
+	}
+	if got := limiter.maxTrackedKeys; got != defaultMaxTrackedKeys {
+		t.Fatalf("maxTrackedKeys = %d, want %d", got, defaultMaxTrackedKeys)
+	}
+}
+
+func TestDirectlyConfiguredInvalidLimiterDoesNotInitializeAccountingState(t *testing.T) {
+	limiter := &Limiter{Max: 0, TTL: time.Hour}
+
+	if reached := limiter.LimitReached("client"); !reached {
+		t.Fatal("invalid directly configured limiter allowed a request")
+	}
+	if limiter.tokenBuckets != nil || limiter.tokenBucketOrder != nil || limiter.tokenBucketEntries != nil {
+		t.Fatal("invalid directly configured limiter initialized private accounting state")
+	}
+	if limiter.maxTrackedKeys != 0 {
+		t.Fatalf("maxTrackedKeys = %d, want uninitialized zero", limiter.maxTrackedKeys)
+	}
+}
+
 func TestLimiterCapsTrackedKeys(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 	limiter.maxTrackedKeys = 3

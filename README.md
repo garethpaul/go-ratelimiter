@@ -123,6 +123,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   default remote-IP/path bucket instead of disabling rate limiting.
 - Each limiter retains at most 10,000 tracked keys and evicts the least recently
   used bucket before admitting another request-derived key.
+- `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
 
 ## Maintenance Notes
 
@@ -138,6 +139,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   validation.
 - See `docs/plans/2026-06-14-empty-config-fallback.md` for empty constraint
   collection fallback behavior.
+- See `docs/plans/2026-06-15-direct-limiter-construction.md` for safe private
+  key-accounting initialization when callers construct a valid limiter directly.
 - See `docs/plans/2026-06-09-header-blank-value-matching.md` for header value
   matching with blank leading request values.
 - See `docs/plans/2026-06-09-header-blank-configured-values.md` for blank

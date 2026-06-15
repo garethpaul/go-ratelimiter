@@ -1,13 +1,13 @@
-# Support Direct Limiter Construction Safely
+# Prevent Direct Key-Accounting Panics
 
-Status: Planned
+Status: Completed
 
 ## Context
 
 `config.Limiter` is an exported configuration type with exported `Max` and
 `TTL` fields, but its private token-bucket maps and LRU list are initialized
-only by `NewLimiter`. A caller that directly constructs a valid limiter, such
-as `&config.Limiter{Max: 1, TTL: time.Hour}`, reaches
+only by `NewLimiter`. A caller that directly constructs a valid limiter for
+key-based accounting, such as `&config.Limiter{Max: 1, TTL: time.Hour}`, reaches
 `LimitReachedForKeys` and panics while assigning the first bucket to a nil map.
 
 ## Requirements
@@ -58,10 +58,29 @@ as `&config.Limiter{Max: 1, TTL: time.Hour}`, reaches
 
 ## Risks
 
-- This change initializes private accounting state; it does not synthesize
-  public middleware response fields such as `StatusCode` or `Message`.
-- Callers should continue to prefer `NewLimiter` when they want all documented
-  response defaults.
+- This change makes direct `LimitReached` key accounting safe; it does not
+  synthesize request middleware defaults such as `IPLookups`, `StatusCode`, or
+  `Message`.
+- Callers should continue to use `NewLimiter` for `LimitByRequest`,
+  `LimitHandler`, and `LimitFuncHandler` so all documented request and response
+  defaults are present.
 - PR #10 will remain stacked on open PR #9 and requires base-first ordering;
   neither pull request may be merged or closed without explicit authorization.
 
+## Verification Results
+
+Completed on 2026-06-15:
+
+- An isolated pre-fix panic reproduced `assignment to entry in nil map` for a
+  valid directly configured limiter.
+- Focused direct-construction tests, uncached package tests,
+  `go test -race ./...`, and `go vet ./...` passed.
+- Repository and external-directory `make check` passed the full formatting,
+  test, vet, race, module-integrity, build, static-contract, guidance, and plan
+  gates.
+- Ten hostile mutations were rejected across six focused source mutations and
+  four static-contract mutations covering initializer placement, all private
+  structures, the default cap, regression coverage, guidance, and completed-plan
+  evidence.
+- Exact diff, Go formatting, generated-artifact, dependency, credential-pattern,
+  conflict-marker, and whitespace audits passed before commit.
