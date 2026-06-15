@@ -1,6 +1,6 @@
 # Make Rate-Limiter Header Key Order Deterministic
 
-Status: In Progress
+Status: Completed
 
 ## Context
 
@@ -63,3 +63,20 @@ relative ordering.
   canonicalization or alias deduplication is outside this change.
 - Existing stacked pull requests remain open and require explicit owner
   authorization before merge or closure.
+
+## Verification Results
+
+Completed on 2026-06-15:
+
+- Focused deterministic helper and `BuildKeys` tests passed.
+- `go test -race ./...` and `go vet ./...` passed across all packages.
+- Repository and external-directory `make check` passed all package tests,
+  module baseline contracts, formatting, vet, race, and build gates.
+- Nine hostile mutations were rejected across sorting removal or reversal,
+  caller-map mutation, shared-order bypass, both regressions, documentation,
+  and completed-plan status.
+- Exact diff, Go formatting, generated-artifact, credential-pattern,
+  conflict-marker, module-integrity, and whitespace audits passed before
+  commit.
+- Configured value order and matching behavior remain unchanged, and header
+  aliases that differ only by case remain distinct configuration keys.

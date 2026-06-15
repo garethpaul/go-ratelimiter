@@ -183,6 +183,53 @@ func TestBuildKeysMethodHeaderValueMatchIncludesConfiguredValue(t *testing.T) {
 	}
 }
 
+func TestSortedHeaderKeysReturnsOrderedCopy(t *testing.T) {
+	headers := map[string][]string{
+		"X-Zone": {"west"},
+		"X-Plan": {"gold"},
+		"X-Mode": {"fast"},
+	}
+	wantHeaders := map[string][]string{
+		"X-Zone": {"west"},
+		"X-Plan": {"gold"},
+		"X-Mode": {"fast"},
+	}
+
+	got := sortedHeaderKeys(headers)
+	want := []string{"X-Mode", "X-Plan", "X-Zone"}
+	if !equalStrings(got, want) {
+		t.Fatalf("sortedHeaderKeys() = %#v, want %#v", got, want)
+	}
+
+	if !reflect.DeepEqual(headers, wantHeaders) {
+		t.Fatal("sortedHeaderKeys mutated caller-owned configuration")
+	}
+}
+
+func TestBuildKeysOrdersConfiguredHeadersDeterministically(t *testing.T) {
+	limiter := NewLimiter(10, time.Minute)
+	limiter.Headers = map[string][]string{
+		"X-Zone": {"west"},
+		"X-Plan": {"gold"},
+		"X-Mode": {"fast"},
+	}
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+	request.Header.Set("X-Zone", "west")
+	request.Header.Set("X-Plan", "gold")
+	request.Header.Set("X-Mode", "fast")
+
+	got := BuildKeys(limiter, request)
+	want := [][]string{
+		{"203.0.113.10", "/limited", "X-Mode", "fast"},
+		{"203.0.113.10", "/limited", "X-Plan", "gold"},
+		{"203.0.113.10", "/limited", "X-Zone", "west"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildKeys() = %#v, want %#v", got, want)
+	}
+}
+
 func TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {

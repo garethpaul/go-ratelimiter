@@ -3,6 +3,7 @@ package limiter
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -63,6 +64,7 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 	limitMethods := len(limiter.Methods) > 0
 	limitHeaders := len(limiter.Headers) > 0
 	limitBasicAuth := len(limiter.BasicAuthUsers) > 0
+	headerKeys := sortedHeaderKeys(limiter.Headers)
 
 	// Don't BuildKeys if remoteIP is blank.
 	if remoteIP == "" {
@@ -72,7 +74,8 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 	if limitMethods && limitHeaders && limitBasicAuth {
 		// Limit by HTTP methods and HTTP headers+values and Basic Auth credentials.
 		if libstring.StringInSlice(limiter.Methods, r.Method) {
-			for headerKey, headerValues := range limiter.Headers {
+			for _, headerKey := range headerKeys {
+				headerValues := limiter.Headers[headerKey]
 				matchedHeaderValues := matchingHeaderValues(r, headerKey, headerValues)
 				if (headerValues == nil || len(headerValues) <= 0) && len(matchedHeaderValues) > 0 {
 					// If header values are empty, rate-limit all request with headerKey.
@@ -96,7 +99,8 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 	} else if limitMethods && limitHeaders {
 		// Limit by HTTP methods and HTTP headers+values.
 		if libstring.StringInSlice(limiter.Methods, r.Method) {
-			for headerKey, headerValues := range limiter.Headers {
+			for _, headerKey := range headerKeys {
+				headerValues := limiter.Headers[headerKey]
 				matchedHeaderValues := matchingHeaderValues(r, headerKey, headerValues)
 				if (headerValues == nil || len(headerValues) <= 0) && len(matchedHeaderValues) > 0 {
 					// If header values are empty, rate-limit all request with headerKey.
@@ -128,7 +132,8 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 
 	} else if limitHeaders {
 		// Limit by HTTP headers+values.
-		for headerKey, headerValues := range limiter.Headers {
+		for _, headerKey := range headerKeys {
+			headerValues := limiter.Headers[headerKey]
 			matchedHeaderValues := matchingHeaderValues(r, headerKey, headerValues)
 			if (headerValues == nil || len(headerValues) <= 0) && len(matchedHeaderValues) > 0 {
 				// If header values are empty, rate-limit all request with headerKey.
@@ -154,6 +159,15 @@ func BuildKeys(limiter *config.Limiter, r *http.Request) [][]string {
 	}
 
 	return sliceKeys
+}
+
+func sortedHeaderKeys(headers map[string][]string) []string {
+	keys := make([]string, 0, len(headers))
+	for key := range headers {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func matchingHeaderValues(r *http.Request, headerKey string, headerValues []string) []string {

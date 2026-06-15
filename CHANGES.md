@@ -1,5 +1,6 @@
 # Changes
 
+- Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
 - Prevented empty limiter constraint collections from bypassing the default
   remote-IP/path rate limit.
 

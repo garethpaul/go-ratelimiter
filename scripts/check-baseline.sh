@@ -22,6 +22,7 @@ HEADER_DEDUPLICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-deduplicate-header-va
 REJECTED_PREFLIGHT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-rejected-batch-preflight.md"
 LOCATION_INDEPENDENT_MAKE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-location-independent-make.md"
 EMPTY_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-14-empty-config-fallback.md"
+DETERMINISTIC_HEADER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-deterministic-header-key-order.md"
 
 require_file() {
   path=$1
@@ -69,6 +70,7 @@ for path in \
   "docs/plans/2026-06-13-rejected-batch-preflight.md" \
   "docs/plans/2026-06-13-location-independent-make.md" \
   "docs/plans/2026-06-14-empty-config-fallback.md" \
+  "docs/plans/2026-06-15-deterministic-header-key-order.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -596,4 +598,51 @@ if ! grep -Fq "Empty method, header, and Basic Auth constraint collections fall 
   printf '%s\n' "Project guidance must document empty-constraint fallback behavior." >&2
   exit 1
 fi
+
+for deterministic_header_contract in \
+  '"sort"' \
+  'headerKeys := sortedHeaderKeys(limiter.Headers)' \
+  'func sortedHeaderKeys(headers map[string][]string) []string' \
+  'keys := make([]string, 0, len(headers))' \
+  'sort.Strings(keys)' \
+  'return keys'; do
+  if ! grep -Fq "$deterministic_header_contract" "$ROOT_DIR/limiter.go"; then
+    printf '%s\n' "Deterministic header ordering must keep contract: $deterministic_header_contract" >&2
+    exit 1
+  fi
+done
+if [ "$(grep -Fc 'for _, headerKey := range headerKeys {' "$ROOT_DIR/limiter.go")" -ne 3 ]; then
+  printf '%s\n' "Every header-aware BuildKeys branch must reuse the ordered header list." >&2
+  exit 1
+fi
+if grep -Fq 'for headerKey, headerValues := range limiter.Headers {' "$ROOT_DIR/limiter.go"; then
+  printf '%s\n' "BuildKeys must not range directly over configured header maps." >&2
+  exit 1
+fi
+for deterministic_header_test in \
+  'TestSortedHeaderKeysReturnsOrderedCopy' \
+  'TestBuildKeysOrdersConfiguredHeadersDeterministically' \
+  'sortedHeaderKeys mutated caller-owned configuration'; do
+  if ! grep -Fq "$deterministic_header_test" "$ROOT_DIR/limiter_test.go"; then
+    printf '%s\n' "Limiter tests must keep deterministic header regression: $deterministic_header_test" >&2
+    exit 1
+  fi
+done
+for deterministic_header_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged." "$ROOT_DIR/$deterministic_header_doc"; then
+    printf '%s\n' "$deterministic_header_doc must document deterministic configured-header ordering." >&2
+    exit 1
+  fi
+done
+for deterministic_header_plan_contract in \
+  'Status: Completed' \
+  'go test -race ./...' \
+  'make check' \
+  'hostile mutations' \
+  'Header aliases that differ only by case remain distinct'; do
+  if ! grep -Fq "$deterministic_header_plan_contract" "$DETERMINISTIC_HEADER_PLAN"; then
+    printf '%s\n' "Deterministic header-order plan must record completed evidence: $deterministic_header_plan_contract" >&2
+    exit 1
+  fi
+done
 printf '%s\n' "go-ratelimiter module baseline checks passed."

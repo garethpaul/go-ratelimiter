@@ -113,6 +113,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Blank configured header values are skipped before limiter keys are derived.
 - Matching duplicate configured header values produce one limiter key and one
   token charge per request.
+- Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
 - Multi-key requests preflight every derived bucket so rejection by one bucket
   does not consume available capacity from another bucket.
 - Rejected multi-key requests leave tracked-key and LRU state unchanged; missing
