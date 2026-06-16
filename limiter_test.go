@@ -525,6 +525,73 @@ func TestLimitByRequestReturnsConfiguredHTTPError(t *testing.T) {
 	}
 }
 
+func TestLimitByRequestNormalizesRejectionStatusCode(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured int
+		want       int
+	}{
+		{name: "below three digits", configured: 99, want: http.StatusTooManyRequests},
+		{name: "lower three-digit boundary", configured: 100, want: 100},
+		{name: "upper three-digit boundary", configured: 999, want: 999},
+		{name: "above three digits", configured: 1000, want: http.StatusTooManyRequests},
+		{name: "nonstandard three digits", configured: 799, want: 799},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			limiter := NewLimiter(1, time.Hour)
+			limiter.StatusCode = test.configured
+			request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+			request.RemoteAddr = "203.0.113.10:54321"
+
+			if httpError := LimitByRequest(limiter, request); httpError != nil {
+				t.Fatalf("first request returned an error: %v", httpError)
+			}
+			httpError := LimitByRequest(limiter, request)
+			if httpError == nil {
+				t.Fatal("second request did not return HTTPError")
+			}
+			if got := httpError.StatusCode; got != test.want {
+				t.Fatalf("HTTPError status = %d, want %d", got, test.want)
+			}
+		})
+	}
+}
+
+func TestLimitHandlerNormalizesRejectionStatusCode(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured int
+		want       int
+	}{
+		{name: "below three digits", configured: 99, want: http.StatusTooManyRequests},
+		{name: "lower three-digit boundary", configured: 100, want: 100},
+		{name: "upper three-digit boundary", configured: 999, want: 999},
+		{name: "above three digits", configured: 1000, want: http.StatusTooManyRequests},
+		{name: "nonstandard three digits", configured: 799, want: 799},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			limiter := NewLimiter(1, time.Hour)
+			limiter.StatusCode = test.configured
+			handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+			request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+			request.RemoteAddr = "203.0.113.10:54321"
+
+			handler.ServeHTTP(httptest.NewRecorder(), request)
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+			if got := recorder.Code; got != test.want {
+				t.Fatalf("rejection status = %d, want %d", got, test.want)
+			}
+		})
+	}
+}
+
 func TestLimitByKeysKeepsDelimitedComponentsDistinct(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 

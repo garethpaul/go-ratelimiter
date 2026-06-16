@@ -29,7 +29,18 @@ func LimitByKeys(limiter *config.Limiter, keys []string) *errors.HTTPError {
 }
 
 func limitError(limiter *config.Limiter) *errors.HTTPError {
-	return &errors.HTTPError{Message: limiter.Message, StatusCode: limiter.StatusCode}
+	return &errors.HTTPError{
+		Message:    limiter.Message,
+		StatusCode: rejectionStatusCode(limiter.StatusCode),
+	}
+}
+
+func rejectionStatusCode(statusCode int) int {
+	if statusCode < 100 || statusCode > 999 {
+		return http.StatusTooManyRequests
+	}
+
+	return statusCode
 }
 
 func encodeKeys(keys []string) string {

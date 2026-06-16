@@ -31,6 +31,7 @@ Priority:
 - `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
 - Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.
 - Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.
+- Limiter rejection status codes below 100 or above 999 fall back to 429; valid three-digit configured codes remain unchanged.
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing
 

@@ -1,6 +1,6 @@
 # Rejection Status Code Safety
 
-Status: In Progress
+Status: Completed
 
 ## Context
 
@@ -37,17 +37,20 @@ existing safe default response.
 4. Extend the baseline checker with source, tests, guidance, and completed-plan
    contracts.
 
-## Verification
+## Verification Results
 
-- Focused and uncached package tests
-- `go test -race -count=1 ./...`, `go vet ./...`, `go mod tidy -diff`, and
-  `go build ./...`
-- Repository-root and external-directory `make check`
-- Isolated mutations for low/high bounds, shared normalization, direct and
-  middleware regressions, valid three-digit preservation, guidance, and plan
-  completion
-- Exact-path, formatting, artifact, dependency, sensitive-value,
-  conflict-marker, mode, and whitespace audits
+- Focused and uncached package tests passed for direct and middleware rejection
+  responses, including invalid low/high values and a nonstandard valid value.
+- `go test -race -count=1 ./...`, `go vet ./...`, `go mod verify`,
+  `go mod tidy -diff`, and `go build ./...` passed.
+- Both repository and external-directory `make check` passed.
+- Eleven isolated status-code mutations were rejected across the low/high
+  bounds, exact boundary fixtures, fallback, shared construction, direct and
+  middleware tests, extension-code preservation, guidance, and completed-plan
+  status.
+- No public type or configuration mutation was introduced.
+- Exact-path, formatting, generated-artifact, sensitive-value,
+  conflict-marker, and whitespace audits passed.
 
 ## Risks
 
