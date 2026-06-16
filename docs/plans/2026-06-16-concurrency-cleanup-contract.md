@@ -1,6 +1,6 @@
 # Document Limiter Concurrency and Cleanup
 
-Status: Planned
+Status: Completed
 
 ## Context
 
@@ -65,3 +65,18 @@ does not enforce one aggregate distributed limit.
 - The pull request will be stacked on open PR #10 and requires base-first
   ordering; neither pull request may be merged or closed without explicit
   authorization.
+
+## Verification Results
+
+Completed on 2026-06-16:
+
+- `sh -n scripts/check-baseline.sh`, `go test ./...`, `go test -race ./...`,
+  `go vet ./...`, `go mod tidy -diff`, and `go build ./...` passed.
+- Repository and external-directory `make check` passed the full formatting,
+  test, vet, race, module-integrity, build, static-contract, guidance, and plan
+  gates.
+- Six hostile mutations were rejected across lock removal, cleanup guidance,
+  process-local scope, fresh-bucket behavior, completed status, and verification
+  evidence.
+- Exact diff, formatting, generated-artifact, dependency, credential-pattern,
+  conflict-marker, and whitespace audits passed before commit.

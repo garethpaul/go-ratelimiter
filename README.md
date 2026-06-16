@@ -124,6 +124,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Each limiter retains at most 10,000 tracked keys and evicts the least recently
   used bucket before admitting another request-derived key.
 - `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
+- Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.
 
 ## Maintenance Notes
 

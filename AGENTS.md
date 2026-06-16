@@ -67,6 +67,7 @@ derives request keys and applies in-memory token-bucket rate limits.
 - Treat only non-empty method, header, and Basic Auth collections as active constraints.
 - Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
 - `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
+- Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.
 - Keep `check.yml` as the sole pinned, read-only workflow and disable persisted
   checkout credentials.
 
