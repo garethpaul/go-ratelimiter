@@ -1,6 +1,6 @@
 # Final Rejection Status Semantics
 
-Status: Planned
+Status: Completed
 
 ## Context
 
@@ -59,3 +59,17 @@ when the request was rejected.
 - Final nonstandard three-digit codes must remain unchanged.
 - This change is stacked on PR #13 and requires base-first ordering; neither
   pull request may be merged or closed without explicit authorization.
+
+## Verification Results
+
+- Focused direct, recorder, and real-server regressions passed; the real-server
+  regression confirms configured informational status `100` produces a
+  client-visible `429` rejection with the configured body.
+- Uncached package tests, race-enabled tests, `go vet`, `go mod verify`,
+  `go mod tidy -diff`, and `go build ./...` passed.
+- Both repository-root and external-directory `make check` passed.
+- The seven isolated final-status mutations were rejected across the lower and
+  upper bounds, fallback, informational expectations, real-server regression,
+  maintained guidance, and reopened plan status.
+- No public API or caller configuration was mutated; final configured codes
+  from `200` through `999` remain unchanged.

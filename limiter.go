@@ -36,7 +36,7 @@ func limitError(limiter *config.Limiter) *errors.HTTPError {
 }
 
 func rejectionStatusCode(statusCode int) int {
-	if statusCode < 100 || statusCode > 999 {
+	if statusCode < 200 || statusCode > 999 {
 		return http.StatusTooManyRequests
 	}
 

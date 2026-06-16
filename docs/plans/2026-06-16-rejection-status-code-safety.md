@@ -59,3 +59,11 @@ existing safe default response.
 - The fallback must not rewrite valid three-digit extension codes.
 - PR #13 will be stacked on open PR #12 and requires base-first ordering;
   neither pull request may be merged or closed without explicit authorization.
+
+## Follow-Up
+
+The completed guard prevented `net/http` panics, but a later real-server
+regression proved that informational `1xx` statuses are not final responses and
+can expose a limiter rejection body with client-visible status `200`. The
+follow-up plan `2026-06-16-final-rejection-status-semantics.md` supersedes the
+lower-bound portion of this contract while preserving final codes `200..999`.
