@@ -1,6 +1,6 @@
 # Clarify Error Responses and Extension Points
 
-Status: Planned
+Status: Completed
 
 ## Context
 
@@ -59,3 +59,18 @@ middleware response.
   the limiter is shared across concurrent handlers.
 - PR #12 will be stacked on open PR #11 and requires base-first ordering;
   neither pull request may be merged or closed without explicit authorization.
+
+## Verification Results
+
+Completed on 2026-06-16:
+
+- Focused error-response tests, uncached package tests, `go test -race ./...`,
+  `go vet ./...`, `go mod tidy -diff`, and `go build ./...` passed.
+- Repository and external-directory `make check` passed the complete formatting,
+  test, vet, race, module-integrity, build, source-contract, guidance, and plan
+  gates.
+- Eight hostile mutations were rejected across custom status, content type,
+  body, wrapped-handler short-circuiting, direct `HTTPError` values, guidance,
+  completed status, and verification evidence.
+- Exact diff, Go formatting, artifact, dependency, credential-pattern,
+  conflict-marker, mode, and whitespace audits passed before commit.

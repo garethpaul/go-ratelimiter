@@ -45,6 +45,7 @@ than once for a single request.
 Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
 `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
 Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.
+Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.
 Rejected multi-key preflight should not allocate, evict, or reorder tracked buckets
 before every existing bucket confirms capacity.
 Blank header-only request values should not produce limiter keys when a limiter

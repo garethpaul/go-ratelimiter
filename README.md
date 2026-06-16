@@ -54,6 +54,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   tokens across each `ttl`; non-positive values fail closed.
 - Middleware-owned rate-limit and rejection content-type headers replace stale
   values so nested or repeated application remains unambiguous.
+- Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.
 
 ## Testing and Verification
 

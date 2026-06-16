@@ -25,6 +25,7 @@ EMPTY_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-14-empty-config-fallback.md"
 DETERMINISTIC_HEADER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-deterministic-header-key-order.md"
 DIRECT_CONSTRUCTION_PLAN="$ROOT_DIR/docs/plans/2026-06-15-direct-limiter-construction.md"
 CONCURRENCY_CLEANUP_PLAN="$ROOT_DIR/docs/plans/2026-06-16-concurrency-cleanup-contract.md"
+ERROR_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-error-response-extension-contract.md"
 
 require_file() {
   path=$1
@@ -75,6 +76,7 @@ for path in \
   "docs/plans/2026-06-15-deterministic-header-key-order.md" \
   "docs/plans/2026-06-15-direct-limiter-construction.md" \
   "docs/plans/2026-06-16-concurrency-cleanup-contract.md" \
+  "docs/plans/2026-06-16-error-response-extension-contract.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -751,6 +753,62 @@ for concurrency_cleanup_evidence in \
 done
 if printf '%s\n' "$concurrency_cleanup_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
   printf '%s\n' "Concurrency-cleanup verification must not contain placeholders." >&2
+  exit 1
+fi
+
+for error_response_source_contract in \
+  'return &errors.HTTPError{Message: limiter.Message, StatusCode: limiter.StatusCode}' \
+  'w.Header().Set("Content-Type", limiter.MessageContentType)' \
+  'w.WriteHeader(httpError.StatusCode)' \
+  'w.Write([]byte(httpError.Message))'; do
+  if ! grep -Fq "$error_response_source_contract" "$ROOT_DIR/limiter.go"; then
+    printf '%s\n' "Limiter error-response source contract missing: $error_response_source_contract" >&2
+    exit 1
+  fi
+done
+for error_response_test in \
+  'TestLimitHandlerUsesConfiguredRejectionResponse' \
+  'rejection status' \
+  'rejection content type' \
+  'rejection body' \
+  'wrapped handler calls' \
+  'TestLimitByRequestReturnsConfiguredHTTPError' \
+  'HTTPError status' \
+  'HTTPError message'; do
+  if ! grep -Fq "$error_response_test" "$ROOT_DIR/limiter_test.go"; then
+    printf '%s\n' "Limiter tests must keep error-response extension contract: $error_response_test" >&2
+    exit 1
+  fi
+done
+error_response_guidance='Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.'
+for error_response_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "$error_response_guidance" "$ROOT_DIR/$error_response_doc"; then
+    printf '%s\n' "$error_response_doc must document limiter error-response extension points." >&2
+    exit 1
+  fi
+done
+error_response_completed_statuses=$(grep -c '^Status: Completed$' "$ERROR_RESPONSE_PLAN" || true)
+error_response_all_statuses=$(grep -c '^Status:' "$ERROR_RESPONSE_PLAN" || true)
+error_response_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$ERROR_RESPONSE_PLAN")
+if [ "$error_response_completed_statuses" -ne 1 ] || [ "$error_response_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Error-response plan must record exactly one completed status." >&2
+  exit 1
+fi
+for error_response_evidence in \
+  'go test -race ./...' \
+  'external-directory `make check`' \
+  'hostile mutations'; do
+  if ! printf '%s\n' "$error_response_verification" | grep -Fq "$error_response_evidence"; then
+    printf '%s\n' "Error-response plan must record completed verification: $error_response_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$error_response_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Error-response verification must not contain placeholders." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."
