@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -534,11 +535,15 @@ func TestLimitByRequestNormalizesRejectionStatusCode(t *testing.T) {
 	}{
 		{name: "below three digits", configured: 99, want: http.StatusTooManyRequests},
 		{name: "continue is informational", configured: 100, want: http.StatusTooManyRequests},
-		{name: "upper informational boundary", configured: 199, want: http.StatusTooManyRequests},
-		{name: "lower final boundary", configured: 200, want: 200},
-		{name: "upper three-digit boundary", configured: 999, want: 999},
+		{name: "success", configured: 200, want: http.StatusTooManyRequests},
+		{name: "redirect", configured: 302, want: http.StatusTooManyRequests},
+		{name: "upper redirect boundary", configured: 399, want: http.StatusTooManyRequests},
+		{name: "lower client error boundary", configured: 400, want: 400},
+		{name: "nonstandard client error", configured: 499, want: 499},
+		{name: "upper server error boundary", configured: 599, want: 599},
+		{name: "above server error boundary", configured: 600, want: http.StatusTooManyRequests},
+		{name: "upper three-digit boundary", configured: 999, want: http.StatusTooManyRequests},
 		{name: "above three digits", configured: 1000, want: http.StatusTooManyRequests},
-		{name: "nonstandard three digits", configured: 799, want: 799},
 	}
 
 	for _, test := range tests {
@@ -570,11 +575,15 @@ func TestLimitHandlerNormalizesRejectionStatusCode(t *testing.T) {
 	}{
 		{name: "below three digits", configured: 99, want: http.StatusTooManyRequests},
 		{name: "continue is informational", configured: 100, want: http.StatusTooManyRequests},
-		{name: "upper informational boundary", configured: 199, want: http.StatusTooManyRequests},
-		{name: "lower final boundary", configured: 200, want: 200},
-		{name: "upper three-digit boundary", configured: 999, want: 999},
+		{name: "success", configured: 200, want: http.StatusTooManyRequests},
+		{name: "redirect", configured: 302, want: http.StatusTooManyRequests},
+		{name: "upper redirect boundary", configured: 399, want: http.StatusTooManyRequests},
+		{name: "lower client error boundary", configured: 400, want: 400},
+		{name: "nonstandard client error", configured: 499, want: 499},
+		{name: "upper server error boundary", configured: 599, want: 599},
+		{name: "above server error boundary", configured: 600, want: http.StatusTooManyRequests},
+		{name: "upper three-digit boundary", configured: 999, want: http.StatusTooManyRequests},
 		{name: "above three digits", configured: 1000, want: http.StatusTooManyRequests},
-		{name: "nonstandard three digits", configured: 799, want: 799},
 	}
 
 	for _, test := range tests {
@@ -597,48 +606,56 @@ func TestLimitHandlerNormalizesRejectionStatusCode(t *testing.T) {
 	}
 }
 
-func TestLimitHandlerNormalizesInformationalStatusForRealServer(t *testing.T) {
-	limiter := NewLimiter(1, time.Hour)
-	limiter.StatusCode = http.StatusContinue
-	limiter.IPLookups = []string{"X-Real-IP"}
-	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-	server := httptest.NewServer(handler)
-	defer server.Close()
+func TestLimitHandlerNormalizesNonErrorStatusForRealServer(t *testing.T) {
+	for _, configured := range []int{http.StatusContinue, http.StatusOK, http.StatusFound, 399, 600, 999} {
+		t.Run(strconv.Itoa(configured), func(t *testing.T) {
+			limiter := NewLimiter(1, time.Hour)
+			limiter.StatusCode = configured
+			limiter.IPLookups = []string{"X-Real-IP"}
+			handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+			server := httptest.NewServer(handler)
+			defer server.Close()
 
-	request := func() *http.Request {
-		r, err := http.NewRequest(http.MethodGet, server.URL+"/limited", nil)
-		if err != nil {
-			t.Fatalf("create request: %v", err)
-		}
-		r.Header.Set("X-Real-IP", "203.0.113.10")
-		return r
-	}
+			client := server.Client()
+			client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+			request := func() *http.Request {
+				r, err := http.NewRequest(http.MethodGet, server.URL+"/limited", nil)
+				if err != nil {
+					t.Fatalf("create request: %v", err)
+				}
+				r.Header.Set("X-Real-IP", "203.0.113.10")
+				return r
+			}
 
-	first, err := server.Client().Do(request())
-	if err != nil {
-		t.Fatalf("first request failed: %v", err)
-	}
-	first.Body.Close()
-	if got, want := first.StatusCode, http.StatusNoContent; got != want {
-		t.Fatalf("first response status = %d, want %d", got, want)
-	}
+			first, err := client.Do(request())
+			if err != nil {
+				t.Fatalf("first request failed: %v", err)
+			}
+			first.Body.Close()
+			if got, want := first.StatusCode, http.StatusNoContent; got != want {
+				t.Fatalf("first response status = %d, want %d", got, want)
+			}
 
-	second, err := server.Client().Do(request())
-	if err != nil {
-		t.Fatalf("second request failed: %v", err)
-	}
-	defer second.Body.Close()
-	body, err := io.ReadAll(second.Body)
-	if err != nil {
-		t.Fatalf("read rejection body: %v", err)
-	}
-	if got, want := second.StatusCode, http.StatusTooManyRequests; got != want {
-		t.Fatalf("client-visible rejection status = %d, want %d", got, want)
-	}
-	if got, want := string(body), limiter.Message; got != want {
-		t.Fatalf("rejection body = %q, want %q", got, want)
+			second, err := client.Do(request())
+			if err != nil {
+				t.Fatalf("second request failed: %v", err)
+			}
+			defer second.Body.Close()
+			body, err := io.ReadAll(second.Body)
+			if err != nil {
+				t.Fatalf("read rejection body: %v", err)
+			}
+			if got, want := second.StatusCode, http.StatusTooManyRequests; got != want {
+				t.Fatalf("client-visible rejection status = %d, want %d", got, want)
+			}
+			if got, want := string(body), limiter.Message; got != want {
+				t.Fatalf("rejection body = %q, want %q", got, want)
+			}
+		})
 	}
 }
 

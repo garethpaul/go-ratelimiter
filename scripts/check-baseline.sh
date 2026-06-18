@@ -28,6 +28,7 @@ CONCURRENCY_CLEANUP_PLAN="$ROOT_DIR/docs/plans/2026-06-16-concurrency-cleanup-co
 ERROR_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-error-response-extension-contract.md"
 STATUS_CODE_SAFETY_PLAN="$ROOT_DIR/docs/plans/2026-06-16-rejection-status-code-safety.md"
 FINAL_STATUS_SEMANTICS_PLAN="$ROOT_DIR/docs/plans/2026-06-16-final-rejection-status-semantics.md"
+ERROR_CLASS_STATUS_PLAN="$ROOT_DIR/docs/plans/2026-06-18-rejection-error-class-status.md"
 
 require_file() {
   path=$1
@@ -81,6 +82,7 @@ for path in \
   "docs/plans/2026-06-16-error-response-extension-contract.md" \
   "docs/plans/2026-06-16-rejection-status-code-safety.md" \
   "docs/plans/2026-06-16-final-rejection-status-semantics.md" \
+  "docs/plans/2026-06-18-rejection-error-class-status.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -817,8 +819,8 @@ if printf '%s\n' "$error_response_verification" | grep -Eiq '(^|[^[:alnum:]_])(p
   exit 1
 fi
 for status_code_source_contract in \
-  'func rejectionStatusCode(statusCode int) int {' \
-  'statusCode < 200 || statusCode > 999' \
+	'func rejectionStatusCode(statusCode int) int {' \
+	'statusCode < 400 || statusCode > 599' \
   'return http.StatusTooManyRequests' \
   'StatusCode: rejectionStatusCode(limiter.StatusCode)'; do
   if ! grep -Fq "$status_code_source_contract" "$ROOT_DIR/limiter.go"; then
@@ -829,20 +831,31 @@ done
 for status_code_test_contract in \
   'TestLimitByRequestNormalizesRejectionStatusCode' \
   'TestLimitHandlerNormalizesRejectionStatusCode' \
-  'TestLimitHandlerNormalizesInformationalStatusForRealServer' \
-  'configured: 99' \
-  'configured: 100, want: http.StatusTooManyRequests' \
-  'configured: 199, want: http.StatusTooManyRequests' \
-  'configured: 200, want: 200' \
-  'configured: 999, want: 999' \
-  'configured: 1000' \
-  'configured: 799, want: 799'; do
+  'TestLimitHandlerNormalizesNonErrorStatusForRealServer' \
+  '[]int{http.StatusContinue, http.StatusOK, http.StatusFound, 399, 600, 999}'; do
   if ! grep -Fq "$status_code_test_contract" "$ROOT_DIR/limiter_test.go"; then
     printf '%s\n' "Limiter tests must keep rejection status-code safety contract: $status_code_test_contract" >&2
     exit 1
   fi
 done
-status_code_safety_guidance='Limiter rejection status codes below 200 or above 999 fall back to 429; final configured codes from 200 through 999 remain unchanged.'
+for shared_status_code_case in \
+  'configured: 99, want: http.StatusTooManyRequests' \
+  'configured: 100, want: http.StatusTooManyRequests' \
+  'configured: 200, want: http.StatusTooManyRequests' \
+  'configured: 302, want: http.StatusTooManyRequests' \
+  'configured: 399, want: http.StatusTooManyRequests' \
+  'configured: 400, want: 400' \
+  'configured: 499, want: 499' \
+  'configured: 599, want: 599' \
+  'configured: 600, want: http.StatusTooManyRequests' \
+  'configured: 999, want: http.StatusTooManyRequests' \
+  'configured: 1000'; do
+  if [ "$(grep -Fc "$shared_status_code_case" "$ROOT_DIR/limiter_test.go")" -ne 2 ]; then
+    printf '%s\n' "Direct and recorder tests must each keep status case: $shared_status_code_case" >&2
+    exit 1
+  fi
+done
+status_code_safety_guidance='Limiter rejection status codes outside 400 through 599 fall back to 429; configured client and server error codes remain unchanged.'
 for status_code_safety_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
   if ! grep -Fq "$status_code_safety_guidance" "$ROOT_DIR/$status_code_safety_doc"; then
     printf '%s\n' "$status_code_safety_doc must document rejection status-code safety." >&2
@@ -896,6 +909,16 @@ for final_status_evidence in \
 done
 if printf '%s\n' "$final_status_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
   printf '%s\n' "Final rejection-status verification must not contain placeholders." >&2
+  exit 1
+fi
+error_class_status=$(grep -c '^status: planned$' "$ERROR_CLASS_STATUS_PLAN" || true)
+error_class_all_statuses=$(grep -c '^status:' "$ERROR_CLASS_STATUS_PLAN" || true)
+if [ "$error_class_status" -ne 1 ] || [ "$error_class_all_statuses" -ne 1 ] || \
+  ! grep -Fq '## Status' "$ERROR_CLASS_STATUS_PLAN" || \
+  ! grep -Fq 'Planned. Implementation and hosted verification are not yet complete.' "$ERROR_CLASS_STATUS_PLAN" || \
+  ! grep -Fq 'HTTP client and server error classes `400..599`' "$ERROR_CLASS_STATUS_PLAN" || \
+  ! grep -Fq 'Successful canonical push and pull-request checks' "$ERROR_CLASS_STATUS_PLAN"; then
+  printf '%s\n' "Error-class rejection-status plan must remain planned until hosted verification completes." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."
