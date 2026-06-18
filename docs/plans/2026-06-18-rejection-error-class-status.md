@@ -1,7 +1,7 @@
 ---
 title: Require Error-Class Rejection Statuses
 type: bugfix
-status: planned
+status: completed
 date: 2026-06-18
 execution: code
 ---
@@ -10,7 +10,8 @@ execution: code
 
 ## Status
 
-Planned. Implementation and hosted verification are not yet complete.
+Completed. Implementation, local verification, mutation checks, review, and
+exact implementation-head hosted verification are complete.
 
 ## Context
 
@@ -90,3 +91,27 @@ guidance, and planned/completed plan evidence through structured checks.
 - Custom `4xx` and `5xx` codes remain supported and need explicit boundary
   regressions to prevent accidental narrowing.
 - The change is stacked on PR #14 and requires base-first integration order.
+
+## Verification Results
+
+- Direct `HTTPError`, recorder, and real-server tests passed across
+  informational, success, redirect, client-error, server-error, and extension
+  boundaries. Rejected requests configured with `200`, `302`, or other
+  non-error statuses now produce client-visible `429` responses.
+- `go test -count=1 ./...`, `go test -race -count=1 ./...`, `go vet ./...`,
+  `go mod verify`, `go mod tidy -diff`, and `go build ./...` passed.
+- `make check`, `make lint`, `make test`, and `make build` passed from the
+  repository, and absolute-Makefile `make check` passed from `/tmp`.
+- Six isolated mutations were rejected across the lower and upper status
+  bounds, real-server success coverage, per-table boundary registration,
+  maintained guidance, and plan status.
+- Plan-aware review found one mutation-sensitivity weakness in the static test
+  contract. The checker now requires every shared boundary case exactly once
+  in each direct and recorder table, and the targeted removal mutation fails.
+- Exact diff, formatting, generated-artifact, executable-mode, whitespace,
+  conflict-marker, and credential-shaped addition audits passed.
+- Exact implementation head `1d421d39b7b3515e402f479f99b849a251acfb98`
+  passed push run `27748640435` and pull-request run `27748660259`.
+- Browser validation was not applicable because this repository is a Go HTTP
+  middleware library with no browser route or UI. No live external service is
+  required for the real-server regression.

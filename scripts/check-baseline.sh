@@ -911,14 +911,35 @@ if printf '%s\n' "$final_status_verification" | grep -Eiq '(^|[^[:alnum:]_])(pen
   printf '%s\n' "Final rejection-status verification must not contain placeholders." >&2
   exit 1
 fi
-error_class_status=$(grep -c '^status: planned$' "$ERROR_CLASS_STATUS_PLAN" || true)
+error_class_status=$(grep -c '^status: completed$' "$ERROR_CLASS_STATUS_PLAN" || true)
 error_class_all_statuses=$(grep -c '^status:' "$ERROR_CLASS_STATUS_PLAN" || true)
+error_class_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$ERROR_CLASS_STATUS_PLAN")
 if [ "$error_class_status" -ne 1 ] || [ "$error_class_all_statuses" -ne 1 ] || \
   ! grep -Fq '## Status' "$ERROR_CLASS_STATUS_PLAN" || \
-  ! grep -Fq 'Planned. Implementation and hosted verification are not yet complete.' "$ERROR_CLASS_STATUS_PLAN" || \
-  ! grep -Fq 'HTTP client and server error classes `400..599`' "$ERROR_CLASS_STATUS_PLAN" || \
-  ! grep -Fq 'Successful canonical push and pull-request checks' "$ERROR_CLASS_STATUS_PLAN"; then
-  printf '%s\n' "Error-class rejection-status plan must remain planned until hosted verification completes." >&2
+  ! grep -Fq 'Completed. Implementation, local verification' "$ERROR_CLASS_STATUS_PLAN"; then
+  printf '%s\n' "Error-class rejection-status plan must record exactly one completed status." >&2
+  exit 1
+fi
+for error_class_evidence in \
+  'Rejected requests configured with `200`, `302`, or other' \
+  'absolute-Makefile `make check` passed from `/tmp`' \
+  'Six isolated mutations were rejected' \
+  'Plan-aware review found one mutation-sensitivity weakness' \
+  '`1d421d39b7b3515e402f479f99b849a251acfb98`' \
+  'push run `27748640435`' \
+  'pull-request run `27748660259`' \
+  'Browser validation was not applicable'; do
+  if ! printf '%s\n' "$error_class_verification" | grep -Fq "$error_class_evidence"; then
+    printf '%s\n' "Error-class rejection-status plan must record completed evidence: $error_class_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$error_class_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run|not yet)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Error-class rejection-status verification must not contain placeholders." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."
