@@ -107,6 +107,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Configured header value matching inspects all request header values, so a
   blank first header value cannot hide a later configured match.
 - Blank configured header values are skipped before limiter keys are derived.
+- Matching duplicate configured header values produce one limiter key and one
+  token charge per request.
 - Blank header-only request values are skipped before limiter keys are derived.
 - Each limiter retains at most 10,000 tracked keys and evicts the least recently
   used bucket before admitting another request-derived key.
@@ -126,6 +128,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `docs/plans/2026-06-09-header-blank-value-matching.md` for header value
   matching with blank leading request values.
 - See `docs/plans/2026-06-09-header-blank-configured-values.md` for blank
+  configured header value handling.
+- See `docs/plans/2026-06-13-deduplicate-header-values.md` for duplicate
   configured header value handling.
 - See `docs/plans/2026-06-09-header-only-blank-request-values.md` for blank
   header-only request value handling.
