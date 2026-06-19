@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Made multi-key request accounting atomic so a rejected request cannot consume
+  tokens from buckets that still have capacity.
 - Deduplicated repeated configured header values before deriving limiter keys so
   one request cannot charge the same token bucket multiple times.
 

@@ -112,6 +112,7 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestLimitHandlerDoesNotPartiallyChargeRejectedMultiKeyRequest" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
@@ -123,6 +124,15 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
+  exit 1
+fi
+
+if ! grep -Fq "func (l *Limiter) LimitReachedForKeys" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "bucket.TokensAt(now) < 1" "$ROOT_DIR/config/config.go" ||
+  ! grep -Fq "limiter.LimitReachedForKeys(encodedKeys)" "$ROOT_DIR/limiter.go" ||
+  ! grep -Fq "TestLimiterDoesNotPartiallyConsumeBatchWhenOneKeyIsLimited" "$ROOT_DIR/config/config_test.go" ||
+  ! grep -Fq "TestLimiterAllowsEmptyBatchWithoutTrackingKeys" "$ROOT_DIR/config/config_test.go"; then
+  printf '%s\n' "Multi-key requests must preflight every bucket before consuming any tokens." >&2
   exit 1
 fi
 

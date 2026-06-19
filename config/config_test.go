@@ -25,6 +25,31 @@ func TestLimiterRefillsMaxTokensPerTTL(t *testing.T) {
 	}
 }
 
+func TestLimiterDoesNotPartiallyConsumeBatchWhenOneKeyIsLimited(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+
+	if reached := limiter.LimitReached("exhausted"); reached {
+		t.Fatal("first exhausted-key request unexpectedly reached the limit")
+	}
+	if reached := limiter.LimitReachedForKeys([]string{"available", "exhausted"}); !reached {
+		t.Fatal("batch containing an exhausted key was allowed")
+	}
+	if reached := limiter.LimitReached("available"); reached {
+		t.Fatal("rejected batch consumed the available key")
+	}
+}
+
+func TestLimiterAllowsEmptyBatchWithoutTrackingKeys(t *testing.T) {
+	limiter := NewLimiter(0, 0)
+
+	if reached := limiter.LimitReachedForKeys(nil); reached {
+		t.Fatal("empty batch unexpectedly reached the limit")
+	}
+	if got := len(limiter.tokenBuckets); got != 0 {
+		t.Fatalf("tracked %d buckets for an empty batch, want 0", got)
+	}
+}
+
 func TestLimiterRejectsInvalidConfigurationWithoutTrackingKeys(t *testing.T) {
 	tests := []struct {
 		name string

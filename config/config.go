@@ -72,13 +72,53 @@ type Limiter struct {
 
 // LimitReached returns a bool indicating if the Bucket identified by key ran out of tokens.
 func (l *Limiter) LimitReached(key string) bool {
+	return l.LimitReachedForKeys([]string{key})
+}
+
+// LimitReachedForKeys atomically checks and consumes one token from each distinct key.
+func (l *Limiter) LimitReachedForKeys(keys []string) bool {
 	l.Lock()
 	defer l.Unlock()
+	if len(keys) == 0 {
+		return false
+	}
 	if l.Max <= 0 || l.TTL <= 0 || uint64(l.Max) > uint64(^uint(0)>>1) {
 		return true
 	}
 
-	storageKey := bucketStorageKey(key)
+	storageKeys := make([]string, 0, len(keys))
+	seenStorageKeys := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		storageKey := bucketStorageKey(key)
+		if _, seen := seenStorageKeys[storageKey]; seen {
+			continue
+		}
+		seenStorageKeys[storageKey] = struct{}{}
+		storageKeys = append(storageKeys, storageKey)
+	}
+	if l.maxTrackedKeys > 0 && len(storageKeys) > l.maxTrackedKeys {
+		return true
+	}
+
+	buckets := make([]*rate.Limiter, 0, len(storageKeys))
+	for _, storageKey := range storageKeys {
+		bucket := l.bucketForStorageKey(storageKey)
+		buckets = append(buckets, bucket)
+	}
+	now := time.Now()
+	for _, bucket := range buckets {
+		if bucket.TokensAt(now) < 1 {
+			return true
+		}
+	}
+	for _, bucket := range buckets {
+		_ = bucket.AllowN(now, 1)
+	}
+
+	return false
+}
+
+func (l *Limiter) bucketForStorageKey(storageKey string) *rate.Limiter {
 	bucket, found := l.tokenBuckets[storageKey]
 	if found {
 		l.tokenBucketOrder.MoveToFront(l.tokenBucketEntries[storageKey])
@@ -97,7 +137,7 @@ func (l *Limiter) LimitReached(key string) bool {
 		l.tokenBucketEntries[storageKey] = l.tokenBucketOrder.PushFront(storageKey)
 	}
 
-	return !bucket.AllowN(time.Now(), 1)
+	return bucket
 }
 
 func bucketStorageKey(key string) string {
