@@ -39,6 +39,42 @@ func TestLimiterDoesNotPartiallyConsumeBatchWhenOneKeyIsLimited(t *testing.T) {
 	}
 }
 
+func TestLimiterRejectedBatchDoesNotAllocateMissingKeys(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.maxTrackedKeys = 3
+
+	if reached := limiter.LimitReached("exhausted"); reached {
+		t.Fatal("first exhausted-key request unexpectedly reached the limit")
+	}
+	if reached := limiter.LimitReachedForKeys([]string{"new", "exhausted"}); !reached {
+		t.Fatal("batch containing an exhausted key was allowed")
+	}
+	if _, found := limiter.tokenBuckets[bucketStorageKey("new")]; found {
+		t.Fatal("rejected batch allocated a missing key")
+	}
+	if got := len(limiter.tokenBuckets); got != 1 {
+		t.Fatalf("tracked %d buckets after rejected batch, want 1", got)
+	}
+}
+
+func TestLimiterRejectedBatchDoesNotEvictTrackedKeys(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.maxTrackedKeys = 2
+
+	limiter.LimitReached("unrelated")
+	limiter.LimitReached("exhausted")
+
+	if reached := limiter.LimitReachedForKeys([]string{"new", "exhausted"}); !reached {
+		t.Fatal("batch containing an exhausted key was allowed")
+	}
+	if _, found := limiter.tokenBuckets[bucketStorageKey("unrelated")]; !found {
+		t.Fatal("rejected batch evicted an unrelated key")
+	}
+	if _, found := limiter.tokenBuckets[bucketStorageKey("new")]; found {
+		t.Fatal("rejected batch retained a newly allocated key")
+	}
+}
+
 func TestLimiterAllowsEmptyBatchWithoutTrackingKeys(t *testing.T) {
 	limiter := NewLimiter(0, 0)
 
@@ -114,13 +150,13 @@ func TestLimiterEvictsLeastRecentlyUsedKey(t *testing.T) {
 	limiter.LimitReached("oldest")
 	limiter.LimitReached("new")
 
-	if _, found := limiter.tokenBuckets[bucketStorageKey("recent")]; found {
+	if _, found := limiter.tokenBuckets[bucketStorageKey("oldest")]; found {
 		t.Fatal("least recently used key was retained")
 	}
-	if _, found := limiter.tokenBuckets[bucketStorageKey("oldest")]; !found {
-		t.Fatal("recently accessed key was evicted")
+	if _, found := limiter.tokenBuckets[bucketStorageKey("recent")]; !found {
+		t.Fatal("most recently accepted key was evicted")
 	}
-	if reached := limiter.LimitReached("recent"); reached {
+	if reached := limiter.LimitReached("oldest"); reached {
 		t.Fatal("evicted key did not receive a fresh token bucket")
 	}
 }

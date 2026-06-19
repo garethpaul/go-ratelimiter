@@ -42,6 +42,8 @@ Blank configured header values should not produce limiter keys with empty
 header value components.
 Duplicate configured header values should not charge the same token bucket more
 than once for a single request.
+Rejected multi-key preflight should not allocate, evict, or reorder tracked buckets
+before every existing bucket confirms capacity.
 Blank header-only request values should not produce limiter keys when a limiter
 is configured to match any non-empty value for that header.
 Token-bucket storage should remain capped with least-recently-used eviction and

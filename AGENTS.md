@@ -63,6 +63,7 @@ derives request keys and applies in-memory token-bucket rate limits.
   fixed-length SHA-256 storage identifier.
 - Keep key component encoding length-prefixed so delimiter-containing values do
   not share buckets accidentally.
+- Keep rejected multi-key preflight free of allocation and eviction side effects.
 - Keep `check.yml` as the sole pinned, read-only workflow and disable persisted
   checkout credentials.
 
