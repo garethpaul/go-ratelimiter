@@ -469,6 +469,62 @@ func TestLimitHandlerReplacesExistingRejectionContentType(t *testing.T) {
 	}
 }
 
+func TestLimitHandlerUsesConfiguredRejectionResponse(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.StatusCode = http.StatusServiceUnavailable
+	limiter.MessageContentType = "application/problem+json"
+	limiter.Message = `{"error":"busy"}`
+	nextCalls := 0
+	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+		nextCalls++
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if got, want := recorder.Code, http.StatusServiceUnavailable; got != want {
+		t.Fatalf("rejection status = %d, want %d", got, want)
+	}
+	if got, want := recorder.Header().Get("Content-Type"), "application/problem+json"; got != want {
+		t.Fatalf("rejection content type = %q, want %q", got, want)
+	}
+	if got, want := recorder.Body.String(), `{"error":"busy"}`; got != want {
+		t.Fatalf("rejection body = %q, want %q", got, want)
+	}
+	if got, want := recorder.Header().Get("X-Rate-Limit-Limit"), "1"; got != want {
+		t.Fatalf("rate limit header = %q, want %q", got, want)
+	}
+	if nextCalls != 1 {
+		t.Fatalf("wrapped handler calls = %d, want 1", nextCalls)
+	}
+}
+
+func TestLimitByRequestReturnsConfiguredHTTPError(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.StatusCode = http.StatusServiceUnavailable
+	limiter.Message = "temporarily unavailable"
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
+
+	if httpError := LimitByRequest(limiter, request); httpError != nil {
+		t.Fatalf("first request returned an error: %v", httpError)
+	}
+	httpError := LimitByRequest(limiter, request)
+	if httpError == nil {
+		t.Fatal("second request did not return HTTPError")
+	}
+	if got, want := httpError.StatusCode, http.StatusServiceUnavailable; got != want {
+		t.Fatalf("HTTPError status = %d, want %d", got, want)
+	}
+	if got, want := httpError.Message, "temporarily unavailable"; got != want {
+		t.Fatalf("HTTPError message = %q, want %q", got, want)
+	}
+}
+
 func TestLimitByKeysKeepsDelimitedComponentsDistinct(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 

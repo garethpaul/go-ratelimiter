@@ -1,5 +1,8 @@
 # Changes
 
+- Documented and regression-tested middleware-owned custom rejection responses
+  and caller-owned `HTTPError` serialization through the direct limiter APIs.
+- Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.
 - Documented that limiter accounting is serialized per limiter, remains
   process-local, has no background cleanup, and uses capacity-driven LRU
   eviction that resets an evicted key to a fresh bucket if it is admitted again.
