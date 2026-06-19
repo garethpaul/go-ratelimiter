@@ -55,6 +55,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - Middleware-owned rate-limit and rejection content-type headers replace stale
   values so nested or repeated application remains unambiguous.
 - Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.
+- Limiter rejection status codes outside 400 through 599 fall back to 429; configured client and server error codes remain unchanged.
 
 ## Testing and Verification
 

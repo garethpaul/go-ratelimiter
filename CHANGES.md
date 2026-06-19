@@ -1,5 +1,6 @@
 # Changes
 
+- Limiter rejection status codes outside 400 through 599 fall back to 429; configured client and server error codes remain unchanged.
 - Documented and regression-tested middleware-owned custom rejection responses
   and caller-owned `HTTPError` serialization through the direct limiter APIs.
 - Middleware rejections use the configured `StatusCode`, `MessageContentType`, and `Message`; callers needing extra headers or custom serialization should call `LimitByRequest` or `LimitByKeys` and write the returned `HTTPError` themselves.

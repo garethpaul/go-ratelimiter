@@ -26,6 +26,9 @@ DETERMINISTIC_HEADER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-deterministic-header-
 DIRECT_CONSTRUCTION_PLAN="$ROOT_DIR/docs/plans/2026-06-15-direct-limiter-construction.md"
 CONCURRENCY_CLEANUP_PLAN="$ROOT_DIR/docs/plans/2026-06-16-concurrency-cleanup-contract.md"
 ERROR_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-error-response-extension-contract.md"
+STATUS_CODE_SAFETY_PLAN="$ROOT_DIR/docs/plans/2026-06-16-rejection-status-code-safety.md"
+FINAL_STATUS_SEMANTICS_PLAN="$ROOT_DIR/docs/plans/2026-06-16-final-rejection-status-semantics.md"
+ERROR_CLASS_STATUS_PLAN="$ROOT_DIR/docs/plans/2026-06-18-rejection-error-class-status.md"
 
 require_file() {
   path=$1
@@ -77,6 +80,9 @@ for path in \
   "docs/plans/2026-06-15-direct-limiter-construction.md" \
   "docs/plans/2026-06-16-concurrency-cleanup-contract.md" \
   "docs/plans/2026-06-16-error-response-extension-contract.md" \
+  "docs/plans/2026-06-16-rejection-status-code-safety.md" \
+  "docs/plans/2026-06-16-final-rejection-status-semantics.md" \
+  "docs/plans/2026-06-18-rejection-error-class-status.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -757,7 +763,8 @@ if printf '%s\n' "$concurrency_cleanup_verification" | grep -Eiq '(^|[^[:alnum:]
 fi
 
 for error_response_source_contract in \
-  'return &errors.HTTPError{Message: limiter.Message, StatusCode: limiter.StatusCode}' \
+  'Message:    limiter.Message' \
+  'StatusCode: rejectionStatusCode(limiter.StatusCode)' \
   'w.Header().Set("Content-Type", limiter.MessageContentType)' \
   'w.WriteHeader(httpError.StatusCode)' \
   'w.Write([]byte(httpError.Message))'; do
@@ -809,6 +816,130 @@ for error_response_evidence in \
 done
 if printf '%s\n' "$error_response_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
   printf '%s\n' "Error-response verification must not contain placeholders." >&2
+  exit 1
+fi
+for status_code_source_contract in \
+	'func rejectionStatusCode(statusCode int) int {' \
+	'statusCode < 400 || statusCode > 599' \
+  'return http.StatusTooManyRequests' \
+  'StatusCode: rejectionStatusCode(limiter.StatusCode)'; do
+  if ! grep -Fq "$status_code_source_contract" "$ROOT_DIR/limiter.go"; then
+    printf '%s\n' "Limiter rejection status-code source contract missing: $status_code_source_contract" >&2
+    exit 1
+  fi
+done
+for status_code_test_contract in \
+  'TestLimitByRequestNormalizesRejectionStatusCode' \
+  'TestLimitHandlerNormalizesRejectionStatusCode' \
+  'TestLimitHandlerNormalizesNonErrorStatusForRealServer' \
+  '[]int{http.StatusContinue, http.StatusOK, http.StatusFound, 399, 600, 999}'; do
+  if ! grep -Fq "$status_code_test_contract" "$ROOT_DIR/limiter_test.go"; then
+    printf '%s\n' "Limiter tests must keep rejection status-code safety contract: $status_code_test_contract" >&2
+    exit 1
+  fi
+done
+for shared_status_code_case in \
+  'configured: 99, want: http.StatusTooManyRequests' \
+  'configured: 100, want: http.StatusTooManyRequests' \
+  'configured: 200, want: http.StatusTooManyRequests' \
+  'configured: 302, want: http.StatusTooManyRequests' \
+  'configured: 399, want: http.StatusTooManyRequests' \
+  'configured: 400, want: 400' \
+  'configured: 499, want: 499' \
+  'configured: 599, want: 599' \
+  'configured: 600, want: http.StatusTooManyRequests' \
+  'configured: 999, want: http.StatusTooManyRequests' \
+  'configured: 1000'; do
+  if [ "$(grep -Fc "$shared_status_code_case" "$ROOT_DIR/limiter_test.go")" -ne 2 ]; then
+    printf '%s\n' "Direct and recorder tests must each keep status case: $shared_status_code_case" >&2
+    exit 1
+  fi
+done
+status_code_safety_guidance='Limiter rejection status codes outside 400 through 599 fall back to 429; configured client and server error codes remain unchanged.'
+for status_code_safety_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "$status_code_safety_guidance" "$ROOT_DIR/$status_code_safety_doc"; then
+    printf '%s\n' "$status_code_safety_doc must document rejection status-code safety." >&2
+    exit 1
+  fi
+done
+status_code_safety_completed_statuses=$(grep -c '^Status: Completed$' "$STATUS_CODE_SAFETY_PLAN" || true)
+status_code_safety_all_statuses=$(grep -c '^Status:' "$STATUS_CODE_SAFETY_PLAN" || true)
+status_code_safety_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$STATUS_CODE_SAFETY_PLAN")
+if [ "$status_code_safety_completed_statuses" -ne 1 ] || [ "$status_code_safety_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Rejection status-code safety plan must record exactly one completed status." >&2
+  exit 1
+fi
+for status_code_safety_evidence in \
+  'repository and external-directory `make check`' \
+  'isolated status-code mutations were rejected' \
+  'No public type or configuration mutation'; do
+  if ! printf '%s\n' "$status_code_safety_verification" | grep -Fq "$status_code_safety_evidence"; then
+    printf '%s\n' "Rejection status-code safety plan must record completed verification: $status_code_safety_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$status_code_safety_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Rejection status-code safety verification must not contain placeholders." >&2
+  exit 1
+fi
+final_status_completed_statuses=$(grep -c '^Status: Completed$' "$FINAL_STATUS_SEMANTICS_PLAN" || true)
+final_status_all_statuses=$(grep -c '^Status:' "$FINAL_STATUS_SEMANTICS_PLAN" || true)
+final_status_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$FINAL_STATUS_SEMANTICS_PLAN")
+if [ "$final_status_completed_statuses" -ne 1 ] || [ "$final_status_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Final rejection-status semantics plan must record exactly one completed status." >&2
+  exit 1
+fi
+for final_status_evidence in \
+  'real-server regression' \
+  'repository-root and external-directory `make check`' \
+  'isolated final-status mutations were rejected' \
+  'No public API or caller configuration was mutated'; do
+  if ! printf '%s\n' "$final_status_verification" | grep -Fq "$final_status_evidence"; then
+    printf '%s\n' "Final rejection-status plan must record completed verification: $final_status_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$final_status_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Final rejection-status verification must not contain placeholders." >&2
+  exit 1
+fi
+error_class_status=$(grep -c '^status: completed$' "$ERROR_CLASS_STATUS_PLAN" || true)
+error_class_all_statuses=$(grep -c '^status:' "$ERROR_CLASS_STATUS_PLAN" || true)
+error_class_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$ERROR_CLASS_STATUS_PLAN")
+if [ "$error_class_status" -ne 1 ] || [ "$error_class_all_statuses" -ne 1 ] || \
+  ! grep -Fq '## Status' "$ERROR_CLASS_STATUS_PLAN" || \
+  ! grep -Fq 'Completed. Implementation, local verification' "$ERROR_CLASS_STATUS_PLAN"; then
+  printf '%s\n' "Error-class rejection-status plan must record exactly one completed status." >&2
+  exit 1
+fi
+for error_class_evidence in \
+  'Rejected requests configured with `200`, `302`, or other' \
+  'absolute-Makefile `make check` passed from `/tmp`' \
+  'Six isolated mutations were rejected' \
+  'Plan-aware review found one mutation-sensitivity weakness' \
+  '`1d421d39b7b3515e402f479f99b849a251acfb98`' \
+  'push run `27748640435`' \
+  'pull-request run `27748660259`' \
+  'Browser validation was not applicable'; do
+  if ! printf '%s\n' "$error_class_verification" | grep -Fq "$error_class_evidence"; then
+    printf '%s\n' "Error-class rejection-status plan must record completed evidence: $error_class_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$error_class_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run|not yet)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Error-class rejection-status verification must not contain placeholders." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."
