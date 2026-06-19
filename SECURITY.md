@@ -43,6 +43,7 @@ header value components.
 Duplicate configured header values should not charge the same token bucket more
 than once for a single request.
 Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
+`LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
 Rejected multi-key preflight should not allocate, evict, or reorder tracked buckets
 before every existing bucket confirms capacity.
 Blank header-only request values should not produce limiter keys when a limiter

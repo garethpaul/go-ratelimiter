@@ -1,5 +1,6 @@
 # Changes
 
+- `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
 - Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
 - Prevented empty limiter constraint collections from bypassing the default
   remote-IP/path rate limit.

@@ -23,6 +23,7 @@ REJECTED_PREFLIGHT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-rejected-batch-prefligh
 LOCATION_INDEPENDENT_MAKE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-location-independent-make.md"
 EMPTY_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-14-empty-config-fallback.md"
 DETERMINISTIC_HEADER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-deterministic-header-key-order.md"
+DIRECT_CONSTRUCTION_PLAN="$ROOT_DIR/docs/plans/2026-06-15-direct-limiter-construction.md"
 
 require_file() {
   path=$1
@@ -71,6 +72,7 @@ for path in \
   "docs/plans/2026-06-13-location-independent-make.md" \
   "docs/plans/2026-06-14-empty-config-fallback.md" \
   "docs/plans/2026-06-15-deterministic-header-key-order.md" \
+  "docs/plans/2026-06-15-direct-limiter-construction.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -645,4 +647,64 @@ for deterministic_header_plan_contract in \
     exit 1
   fi
 done
+
+for direct_construction_contract in \
+  'l.initializeAccountingState()' \
+  'func (l *Limiter) initializeAccountingState()' \
+  'l.tokenBuckets = make(map[string]*rate.Limiter)' \
+  'l.tokenBucketOrder = list.New()' \
+  'l.tokenBucketEntries = make(map[string]*list.Element)' \
+  'l.maxTrackedKeys = defaultMaxTrackedKeys'; do
+  if ! grep -Fq "$direct_construction_contract" "$ROOT_DIR/config/config.go"; then
+    printf '%s\n' "Direct limiter construction must keep contract: $direct_construction_contract" >&2
+    exit 1
+  fi
+done
+invalid_config_line=$(grep -n 'if l.Max <= 0 || l.TTL <= 0' "$ROOT_DIR/config/config.go" | cut -d: -f1)
+initialize_state_line=$(grep -n 'l.initializeAccountingState()' "$ROOT_DIR/config/config.go" | cut -d: -f1)
+if [ -z "$invalid_config_line" ] || [ -z "$initialize_state_line" ] || [ "$initialize_state_line" -le "$invalid_config_line" ]; then
+  printf '%s\n' "Private limiter accounting state must initialize after invalid-config preflight." >&2
+  exit 1
+fi
+for direct_construction_test in \
+  'TestDirectlyConfiguredLimiterInitializesAccountingState' \
+  'TestDirectlyConfiguredInvalidLimiterDoesNotInitializeAccountingState' \
+  'second directly configured request unexpectedly bypassed the limit' \
+  'invalid directly configured limiter initialized private accounting state'; do
+  if ! grep -Fq "$direct_construction_test" "$ROOT_DIR/config/config_test.go"; then
+    printf '%s\n' "Config tests must keep direct-construction regression: $direct_construction_test" >&2
+    exit 1
+  fi
+done
+for direct_construction_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq '`LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.' "$ROOT_DIR/$direct_construction_doc"; then
+    printf '%s\n' "$direct_construction_doc must document safe direct key accounting." >&2
+    exit 1
+  fi
+done
+direct_construction_completed_statuses=$(grep -c '^Status: Completed$' "$DIRECT_CONSTRUCTION_PLAN" || true)
+direct_construction_all_statuses=$(grep -c '^Status:' "$DIRECT_CONSTRUCTION_PLAN" || true)
+direct_construction_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$DIRECT_CONSTRUCTION_PLAN")
+if [ "$direct_construction_completed_statuses" -ne 1 ] || [ "$direct_construction_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Direct-construction plan must record exactly one completed status." >&2
+  exit 1
+fi
+for direct_construction_evidence in \
+  'pre-fix panic' \
+  'go test -race ./...' \
+  'external-directory `make check`' \
+  'hostile mutations'; do
+  if ! printf '%s\n' "$direct_construction_verification" | grep -Fq "$direct_construction_evidence"; then
+    printf '%s\n' "Direct-construction plan must record completed verification: $direct_construction_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$direct_construction_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Direct-construction verification must not contain placeholders." >&2
+  exit 1
+fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."

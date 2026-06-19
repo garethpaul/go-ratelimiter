@@ -85,6 +85,7 @@ func (l *Limiter) LimitReachedForKeys(keys []string) bool {
 	if l.Max <= 0 || l.TTL <= 0 || uint64(l.Max) > uint64(^uint(0)>>1) {
 		return true
 	}
+	l.initializeAccountingState()
 
 	storageKeys := make([]string, 0, len(keys))
 	seenStorageKeys := make(map[string]struct{}, len(keys))
@@ -131,6 +132,21 @@ func (l *Limiter) LimitReachedForKeys(keys []string) bool {
 	}
 
 	return false
+}
+
+func (l *Limiter) initializeAccountingState() {
+	if l.tokenBuckets == nil {
+		l.tokenBuckets = make(map[string]*rate.Limiter)
+	}
+	if l.tokenBucketOrder == nil {
+		l.tokenBucketOrder = list.New()
+	}
+	if l.tokenBucketEntries == nil {
+		l.tokenBucketEntries = make(map[string]*list.Element)
+	}
+	if l.maxTrackedKeys == 0 {
+		l.maxTrackedKeys = defaultMaxTrackedKeys
+	}
 }
 
 func (l *Limiter) bucketForStorageKey(storageKey string) *rate.Limiter {
