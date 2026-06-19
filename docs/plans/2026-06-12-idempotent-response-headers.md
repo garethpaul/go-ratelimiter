@@ -81,3 +81,24 @@ middleware composability.
 Completed on 2026-06-12 with the repository baseline, race-enabled tests, vet,
 module tidiness and integrity checks, mutation coverage, and diff hygiene
 passing.
+
+## Work Completed
+
+- Replaced append semantics with authoritative replacement for both
+  rate-limit metadata fields and the configured rejection content type.
+- Preserved successful responses, rejection status and body behavior, request
+  key derivation, token accounting, and all public APIs.
+- Added regressions for stale preexisting values and repeated header
+  application so nested middleware remains deterministic.
+
+## Verification Completed
+
+- `go test -count=1 ./...`, `go test -race -count=1 ./...`, `go vet ./...`,
+  `go mod tidy -diff`, `go mod verify`, all four Make gates, and
+  `git diff --check` passed locally on Go 1.25.11.
+- Implementation push run `27393483036` and pull-request run `27393485015`
+  passed at commit `9a3ab6509969add0feb4b0db5cf329adec7e4ddf`.
+- Post-merge push run `27393504527` and CodeQL run `27402321986` passed at
+  default-branch merge commit `a38f42b10e78af3f904c6b14618d1df22b0fe968`.
+- Mutations restoring `Header.Add` for rate-limit metadata or rejection
+  content type were rejected by the regression suite and baseline.
