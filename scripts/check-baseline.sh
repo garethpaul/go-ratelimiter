@@ -21,6 +21,7 @@ HEADER_IDEMPOTENCE_PLAN="$ROOT_DIR/docs/plans/2026-06-12-idempotent-response-hea
 HEADER_DEDUPLICATION_PLAN="$ROOT_DIR/docs/plans/2026-06-13-deduplicate-header-values.md"
 REJECTED_PREFLIGHT_PLAN="$ROOT_DIR/docs/plans/2026-06-13-rejected-batch-preflight.md"
 LOCATION_INDEPENDENT_MAKE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-location-independent-make.md"
+EMPTY_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-14-empty-config-fallback.md"
 
 require_file() {
   path=$1
@@ -67,6 +68,7 @@ for path in \
   "docs/plans/2026-06-13-deduplicate-header-values.md" \
   "docs/plans/2026-06-13-rejected-batch-preflight.md" \
   "docs/plans/2026-06-13-location-independent-make.md" \
+  "docs/plans/2026-06-14-empty-config-fallback.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -135,6 +137,9 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestBuildKeysFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysEmptyConstraintsFallBackToRemoteIPAndPath" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestBuildKeysIgnoresEmptyConstraintsBesideActiveFilters" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestLimitHandlerAppliesDefaultLimitWithMixedEmptyConstraints" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestLimitHandlerDoesNotPartiallyChargeRejectedMultiKeyRequest" "$ROOT_DIR/limiter_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsForwardedForList" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPTrimsRealIP" "$ROOT_DIR/libstring/libstring_test.go" ||
@@ -147,6 +152,16 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
+  exit 1
+fi
+
+if ! grep -Fq "limitMethods := len(limiter.Methods) > 0" "$ROOT_DIR/limiter.go" ||
+  ! grep -Fq "limitHeaders := len(limiter.Headers) > 0" "$ROOT_DIR/limiter.go" ||
+  ! grep -Fq "limitBasicAuth := len(limiter.BasicAuthUsers) > 0" "$ROOT_DIR/limiter.go" ||
+  grep -Fq "limiter.Methods != nil" "$ROOT_DIR/limiter.go" ||
+  grep -Fq "limiter.Headers != nil" "$ROOT_DIR/limiter.go" ||
+  grep -Fq "limiter.BasicAuthUsers != nil" "$ROOT_DIR/limiter.go"; then
+  printf '%s\n' "Empty limiter constraint collections must preserve default rate limiting." >&2
   exit 1
 fi
 
@@ -538,6 +553,47 @@ if ! grep -Fq "Rejected multi-key requests leave tracked-key and LRU state uncha
   ! grep -Fq "Made rejected multi-key preflight leave tracked bucket state unchanged" "$ROOT_DIR/CHANGES.md" ||
   ! grep -Fq "Keep rejected multi-key preflight free of allocation and eviction side effects" "$ROOT_DIR/AGENTS.md"; then
   printf '%s\n' "Project guidance must document side-effect-free rejected-batch preflight." >&2
+  exit 1
+fi
+
+empty_config_completed_statuses=$(grep -c '^status: completed$' "$EMPTY_CONFIG_PLAN" || true)
+empty_config_all_statuses=$(grep -c '^status:' "$EMPTY_CONFIG_PLAN" || true)
+empty_config_verification=$(awk '
+  /^## Verification Completed$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$EMPTY_CONFIG_PLAN")
+
+if [ "$empty_config_completed_statuses" -ne 1 ] || [ "$empty_config_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Empty-configuration fallback plan must record exactly one completed status." >&2
+  exit 1
+fi
+
+for evidence in \
+  'Focused empty-constraint key and middleware tests passed' \
+  'Uncached full tests, race tests, vet, build, module verification' \
+  'All four Make gates passed' \
+  'Makefile path passed from `/tmp`' \
+  'Eight isolated mutations were rejected' \
+  'generated-artifact inspection' \
+  'changed-line credential scanning passed'; do
+  if ! printf '%s\n' "$empty_config_verification" | grep -Fq "$evidence"; then
+    printf '%s\n' "Empty-configuration fallback plan must record actual completed verification." >&2
+    exit 1
+  fi
+done
+
+if printf '%s\n' "$empty_config_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Empty-configuration fallback verification must not contain placeholders." >&2
+  exit 1
+fi
+
+if ! grep -Fq "Empty method, header, and Basic Auth constraint collections fall back" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "Empty constraint collections must not bypass" "$ROOT_DIR/SECURITY.md" ||
+  ! grep -Fq "Preserve default limiting for empty constraint collections" "$ROOT_DIR/VISION.md" ||
+  ! grep -Fq "Prevented empty limiter constraint collections from bypassing" "$ROOT_DIR/CHANGES.md" ||
+  ! grep -Fq "Treat only non-empty method, header, and Basic Auth collections as active constraints" "$ROOT_DIR/AGENTS.md"; then
+  printf '%s\n' "Project guidance must document empty-constraint fallback behavior." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."

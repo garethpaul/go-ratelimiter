@@ -64,6 +64,7 @@ derives request keys and applies in-memory token-bucket rate limits.
 - Keep key component encoding length-prefixed so delimiter-containing values do
   not share buckets accidentally.
 - Keep rejected multi-key preflight free of allocation and eviction side effects.
+- Treat only non-empty method, header, and Basic Auth collections as active constraints.
 - Keep `check.yml` as the sole pinned, read-only workflow and disable persisted
   checkout credentials.
 

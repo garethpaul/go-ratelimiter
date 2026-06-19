@@ -27,6 +27,7 @@ Priority:
 - Preserve available bucket capacity when another key rejects a multi-key request
 - Keep rejected multi-key preflight side-effect free for tracked bucket state
 - Preserve header-only matching only for non-empty request header values
+- Preserve default limiting for empty constraint collections
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing
 

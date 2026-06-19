@@ -46,6 +46,9 @@ Rejected multi-key preflight should not allocate, evict, or reorder tracked buck
 before every existing bucket confirms capacity.
 Blank header-only request values should not produce limiter keys when a limiter
 is configured to match any non-empty value for that header.
+Empty constraint collections must not bypass the default remote-IP/path rate
+limit; only non-empty method, header, or Basic Auth collections activate those
+filters.
 Token-bucket storage should remain capped with least-recently-used eviction and
 fixed-length hashed identifiers so rotating or oversized request-derived keys
 cannot grow retained process memory without bound.

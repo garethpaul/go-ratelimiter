@@ -3,8 +3,11 @@ package limiter
 import (
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/garethpaul/go-ratelimiter/config"
 )
 
 func TestBuildKeysDefaultUsesRemoteIPAndPath(t *testing.T) {
@@ -213,6 +216,127 @@ func TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
 	request.RemoteAddr = "203.0.113.10:54321"
 	request.Header.Set("X-Plan", "gold")
+
+	first := httptest.NewRecorder()
+	handler.ServeHTTP(first, request)
+	if first.Code != http.StatusNoContent {
+		t.Fatalf("first response status = %d, want %d", first.Code, http.StatusNoContent)
+	}
+
+	second := httptest.NewRecorder()
+	handler.ServeHTTP(second, request)
+	if second.Code != http.StatusTooManyRequests {
+		t.Fatalf("second response status = %d, want %d", second.Code, http.StatusTooManyRequests)
+	}
+}
+
+func TestBuildKeysEmptyConstraintsFallBackToRemoteIPAndPath(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*config.Limiter)
+	}{
+		{
+			name: "methods",
+			configure: func(limiter *config.Limiter) {
+				limiter.Methods = []string{}
+			},
+		},
+		{
+			name: "headers",
+			configure: func(limiter *config.Limiter) {
+				limiter.Headers = map[string][]string{}
+			},
+		},
+		{
+			name: "basic auth users",
+			configure: func(limiter *config.Limiter) {
+				limiter.BasicAuthUsers = []string{}
+			},
+		},
+		{
+			name: "mixed empty constraints",
+			configure: func(limiter *config.Limiter) {
+				limiter.Methods = []string{}
+				limiter.Headers = map[string][]string{}
+				limiter.BasicAuthUsers = []string{}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			limiter := NewLimiter(1, time.Hour)
+			tt.configure(limiter)
+			request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+			request.RemoteAddr = "203.0.113.10:54321"
+
+			got := BuildKeys(limiter, request)
+			want := [][]string{{"203.0.113.10", "/limited"}}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("BuildKeys() = %#v, want %#v", got, want)
+			}
+		})
+	}
+}
+
+func TestBuildKeysIgnoresEmptyConstraintsBesideActiveFilters(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*config.Limiter)
+		request   func() *http.Request
+		want      [][]string
+	}{
+		{
+			name: "empty methods preserve header filter",
+			configure: func(limiter *config.Limiter) {
+				limiter.Methods = []string{}
+				limiter.Headers = map[string][]string{"X-Plan": {"gold"}}
+			},
+			request: func() *http.Request {
+				request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+				request.Header.Set("X-Plan", "gold")
+				return request
+			},
+			want: [][]string{{"203.0.113.10", "/limited", "X-Plan", "gold"}},
+		},
+		{
+			name: "empty headers and auth preserve method filter",
+			configure: func(limiter *config.Limiter) {
+				limiter.Methods = []string{http.MethodGet}
+				limiter.Headers = map[string][]string{}
+				limiter.BasicAuthUsers = []string{}
+			},
+			request: func() *http.Request {
+				return httptest.NewRequest(http.MethodGet, "/limited", nil)
+			},
+			want: [][]string{{"203.0.113.10", "/limited", http.MethodGet}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			limiter := NewLimiter(1, time.Hour)
+			tt.configure(limiter)
+			request := tt.request()
+			request.RemoteAddr = "203.0.113.10:54321"
+
+			if got := BuildKeys(limiter, request); !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("BuildKeys() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLimitHandlerAppliesDefaultLimitWithMixedEmptyConstraints(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	limiter.Methods = []string{}
+	limiter.Headers = map[string][]string{}
+	limiter.BasicAuthUsers = []string{}
+	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	request := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	request.RemoteAddr = "203.0.113.10:54321"
 
 	first := httptest.NewRecorder()
 	handler.ServeHTTP(first, request)

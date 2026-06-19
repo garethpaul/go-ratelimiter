@@ -118,6 +118,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - Rejected multi-key requests leave tracked-key and LRU state unchanged; missing
   buckets are created only after existing capacity succeeds.
 - Blank header-only request values are skipped before limiter keys are derived.
+- Empty method, header, and Basic Auth constraint collections fall back to the
+  default remote-IP/path bucket instead of disabling rate limiting.
 - Each limiter retains at most 10,000 tracked keys and evicts the least recently
   used bucket before admitting another request-derived key.
 
@@ -133,6 +135,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   target guardrails.
 - See `docs/plans/2026-06-09-malformed-remote-addr.md` for direct RemoteAddr
   validation.
+- See `docs/plans/2026-06-14-empty-config-fallback.md` for empty constraint
+  collection fallback behavior.
 - See `docs/plans/2026-06-09-header-blank-value-matching.md` for header value
   matching with blank leading request values.
 - See `docs/plans/2026-06-09-header-blank-configured-values.md` for blank
