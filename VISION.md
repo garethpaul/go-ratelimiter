@@ -66,6 +66,7 @@ The blank configured header values guard skips empty configured values before
 limiter keys are derived.
 The duplicate configured header values guard derives one key and charges one
 token for each distinct matched value.
+Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
 The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
 Each limiter retains at most 10,000 request-derived keys and evicts the least
