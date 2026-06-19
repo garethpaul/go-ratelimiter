@@ -24,6 +24,7 @@ LOCATION_INDEPENDENT_MAKE_PLAN="$ROOT_DIR/docs/plans/2026-06-13-location-indepen
 EMPTY_CONFIG_PLAN="$ROOT_DIR/docs/plans/2026-06-14-empty-config-fallback.md"
 DETERMINISTIC_HEADER_PLAN="$ROOT_DIR/docs/plans/2026-06-15-deterministic-header-key-order.md"
 DIRECT_CONSTRUCTION_PLAN="$ROOT_DIR/docs/plans/2026-06-15-direct-limiter-construction.md"
+CONCURRENCY_CLEANUP_PLAN="$ROOT_DIR/docs/plans/2026-06-16-concurrency-cleanup-contract.md"
 
 require_file() {
   path=$1
@@ -73,6 +74,7 @@ for path in \
   "docs/plans/2026-06-14-empty-config-fallback.md" \
   "docs/plans/2026-06-15-deterministic-header-key-order.md" \
   "docs/plans/2026-06-15-direct-limiter-construction.md" \
+  "docs/plans/2026-06-16-concurrency-cleanup-contract.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -705,6 +707,50 @@ for direct_construction_evidence in \
 done
 if printf '%s\n' "$direct_construction_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
   printf '%s\n' "Direct-construction verification must not contain placeholders." >&2
+  exit 1
+fi
+
+for concurrency_cleanup_source_contract in \
+  'l.Lock()' \
+  'defer l.Unlock()' \
+  'oldest := l.tokenBucketOrder.Back()' \
+  'delete(l.tokenBuckets, oldestKey)' \
+  'l.tokenBucketOrder.Remove(oldest)' \
+  'bucket = rate.NewLimiter(refillRate, int(l.Max))'; do
+  if ! grep -Fq "$concurrency_cleanup_source_contract" "$ROOT_DIR/config/config.go"; then
+    printf '%s\n' "Limiter concurrency and cleanup source contract missing: $concurrency_cleanup_source_contract" >&2
+    exit 1
+  fi
+done
+concurrency_cleanup_guidance='Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.'
+for concurrency_cleanup_doc in AGENTS.md README.md SECURITY.md VISION.md; do
+  if ! grep -Fq "$concurrency_cleanup_guidance" "$ROOT_DIR/$concurrency_cleanup_doc"; then
+    printf '%s\n' "$concurrency_cleanup_doc must document limiter concurrency and cleanup behavior." >&2
+    exit 1
+  fi
+done
+concurrency_cleanup_completed_statuses=$(grep -c '^Status: Completed$' "$CONCURRENCY_CLEANUP_PLAN" || true)
+concurrency_cleanup_all_statuses=$(grep -c '^Status:' "$CONCURRENCY_CLEANUP_PLAN" || true)
+concurrency_cleanup_verification=$(awk '
+  /^## Verification Results$/ { in_verification = 1; next }
+  in_verification && /^## / { exit }
+  in_verification { print }
+' "$CONCURRENCY_CLEANUP_PLAN")
+if [ "$concurrency_cleanup_completed_statuses" -ne 1 ] || [ "$concurrency_cleanup_all_statuses" -ne 1 ]; then
+  printf '%s\n' "Concurrency-cleanup plan must record exactly one completed status." >&2
+  exit 1
+fi
+for concurrency_cleanup_evidence in \
+  'go test -race ./...' \
+  'external-directory `make check`' \
+  'hostile mutations'; do
+  if ! printf '%s\n' "$concurrency_cleanup_verification" | grep -Fq "$concurrency_cleanup_evidence"; then
+    printf '%s\n' "Concurrency-cleanup plan must record completed verification: $concurrency_cleanup_evidence" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$concurrency_cleanup_verification" | grep -Eiq '(^|[^[:alnum:]_])(pending|todo|tbd|not run)([^[:alnum:]_]|$)'; then
+  printf '%s\n' "Concurrency-cleanup verification must not contain placeholders." >&2
   exit 1
 fi
 printf '%s\n' "go-ratelimiter module baseline checks passed."

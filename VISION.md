@@ -29,12 +29,12 @@ Priority:
 - Preserve header-only matching only for non-empty request header values
 - Preserve default limiting for empty constraint collections
 - `LimitReached` calls on directly configured valid limiters lazily initialize private accounting state with the same 10,000-key cap as `NewLimiter`.
+- Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.
 - Keep the Go module, `scripts/check-baseline.sh`, `make lint`, `make test`,
   `make build`, `make check`, and behavior tests passing
 
 Next priorities:
 
-- Document concurrency and cleanup behavior
 - Clarify error responses and extension points
 
 Contribution rules:
@@ -68,6 +68,7 @@ limiter keys are derived.
 The duplicate configured header values guard derives one key and charges one
 token for each distinct matched value.
 Configured header names are sorted before limiter keys are derived, while configured value order remains unchanged.
+Limiter key accounting is serialized per limiter. Buckets are process-local and have no background cleanup; at the 10,000-key default cap, capacity pressure evicts the least-recently-used key, which starts with a fresh bucket if admitted again.
 The blank header-only request values guard skips empty request header values
 before limiter keys are derived.
 Each limiter retains at most 10,000 request-derived keys and evicts the least
