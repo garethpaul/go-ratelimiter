@@ -4,6 +4,7 @@ package libstring
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 )
 
@@ -17,25 +18,25 @@ func StringInSlice(sliceString []string, needle string) bool {
 	return false
 }
 
+func canonicalIP(s string) string {
+	addr, err := netip.ParseAddr(s)
+	if err != nil {
+		return ""
+	}
+	return addr.Unmap().String()
+}
+
 func ipAddrFromRemoteAddr(s string) string {
 	host, _, err := net.SplitHostPort(s)
 	if err != nil {
 		host = strings.Trim(s, "[]")
 	}
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return ""
-	}
-	return ip.String()
+	return canonicalIP(host)
 }
 
 func ipAddrFromHeaderValue(s string) string {
 	value := strings.Trim(strings.TrimSpace(s), "[]")
-	ip := net.ParseIP(value)
-	if ip == nil {
-		return ""
-	}
-	return ip.String()
+	return canonicalIP(value)
 }
 
 func ipAddrFromForwardedFor(s string) string {

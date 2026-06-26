@@ -156,6 +156,48 @@ func TestRemoteIPCanonicalizesEquivalentIPv6Forms(t *testing.T) {
 	}
 }
 
+func TestRemoteIPCanonicalizesScopedIPv6AcrossLookups(t *testing.T) {
+	tests := []struct {
+		name      string
+		lookups   []string
+		configure func(*http.Request)
+	}{
+		{
+			name:    "RemoteAddr",
+			lookups: []string{"RemoteAddr"},
+			configure: func(request *http.Request) {
+				request.RemoteAddr = "[fe80:0:0:0:0:0:0:1%eth0]:1234"
+			},
+		},
+		{
+			name:    "X-Forwarded-For",
+			lookups: []string{"X-Forwarded-For"},
+			configure: func(request *http.Request) {
+				request.Header.Set("X-Forwarded-For", "fe80:0:0:0:0:0:0:1%eth0, 198.51.100.7")
+			},
+		},
+		{
+			name:    "X-Real-IP",
+			lookups: []string{"X-Real-IP"},
+			configure: func(request *http.Request) {
+				request.Header.Set("X-Real-IP", "fe80:0:0:0:0:0:0:1%eth0")
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest("GET", "/", nil)
+			test.configure(request)
+
+			got := RemoteIP(test.lookups, request)
+			if got != "fe80::1%eth0" {
+				t.Fatalf("RemoteIP = %q, want canonical scoped IPv6 address", got)
+			}
+		})
+	}
+}
+
 func TestRemoteIPSkipsMalformedRemoteAddr(t *testing.T) {
 	request := httptest.NewRequest("GET", "/", nil)
 	request.RemoteAddr = "not-an-ip"

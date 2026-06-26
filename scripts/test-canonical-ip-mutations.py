@@ -9,16 +9,16 @@ source_path = root / "libstring" / "libstring.go"
 original = source_path.read_text()
 mutations = (
     (
-        "RemoteAddr canonicalization",
-        "\treturn ip.String()\n}\n\nfunc ipAddrFromHeaderValue",
-        "\treturn host\n}\n\nfunc ipAddrFromHeaderValue",
+        "canonical address text",
+        "\treturn addr.Unmap().String()",
+        "\treturn s",
         "TestLimitHandlerSharesBucketAcrossEquivalentIPv6Forms|TestRemoteIPCanonicalizesEquivalentIPv6Forms",
     ),
     (
-        "proxy header canonicalization",
-        "\treturn ip.String()\n}\n\nfunc ipAddrFromForwardedFor",
-        "\treturn value\n}\n\nfunc ipAddrFromForwardedFor",
-        "TestRemoteIPCanonicalizesEquivalentIPv6Forms",
+        "scoped IPv6 zone preservation",
+        "\treturn addr.Unmap().String()",
+        "\treturn addr.WithZone(\"\").Unmap().String()",
+        "ScopedIPv6",
     ),
 )
 

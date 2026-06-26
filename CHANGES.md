@@ -1,5 +1,15 @@
 # Changes
 
+## 2026-06-26 - Scoped IPv6 limiter identities
+
+- Fixed valid scoped IPv6 addresses that previously produced no request keys
+  and bypassed rate limiting.
+- Scoped IPv6 addresses retain their zone and consume limiter buckets across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
+- Added cross-source parser coverage, middleware bucket-sharing coverage, and
+  zone-preservation mutation checks.
+- Go 1.25.11 focused tests and both canonical-IP hostile mutations pass; full
+  repository and external-directory verification are recorded in the plan.
+
 ## 2026-06-26 07:52 PDT
 
 Priority: correctness and rate-limit identity integrity.
