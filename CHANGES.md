@@ -1,5 +1,56 @@
 # Changes
 
+## 2026-06-26 07:52 PDT
+
+Priority: correctness and rate-limit identity integrity.
+
+Summary:
+
+- Canonicalized validated request IPs so equivalent textual forms cannot obtain
+  independent token buckets.
+
+Work completed:
+
+- Returned `net.IP.String()` from both direct-address and proxy-header parsers.
+- Added middleware coverage proving expanded and compressed IPv6 forms share
+  one exhausted bucket.
+- Added table-driven coverage for `RemoteAddr`, `X-Forwarded-For`, and
+  `X-Real-IP`, plus two hostile source mutations.
+
+Threads:
+
+- Request identity, IPv6 normalization, trusted proxy inputs, and maintained
+  static verification.
+
+Files changed:
+
+- `libstring/libstring.go`, focused Go tests, mutation and baseline scripts,
+  project guidance, and canonical-IP plans.
+
+Validation:
+
+- Red phase: equivalent expanded/compressed IPv6 requests returned `204` twice
+  instead of exhausting one shared bucket; all three lookup sources returned
+  the expanded text unchanged.
+- Green focused tests pass on Go 1.25.11.
+- Repository-root and external-directory `make check` pass on Go 1.25.11 with
+  race tests, vet, module-integrity checks, and two canonical IP hostile mutations.
+- Hosted checks, CodeQL, and review are pending.
+
+Bugs and findings:
+
+- Validating without canonicalizing allowed one client address to rotate IPv6
+  spellings and receive fresh process-local buckets.
+- Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
+
+Blockers:
+
+- None for local implementation.
+
+Next action:
+
+- Push the focused PR, then verify hosted checks and the exact final head.
+
 - Limiter rejection status codes outside 400 through 599 fall back to 429; configured client and server error codes remain unchanged.
 - Documented and regression-tested middleware-owned custom rejection responses
   and caller-owned `HTTPError` serialization through the direct limiter APIs.

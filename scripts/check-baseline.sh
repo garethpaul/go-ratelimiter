@@ -29,6 +29,9 @@ ERROR_RESPONSE_PLAN="$ROOT_DIR/docs/plans/2026-06-16-error-response-extension-co
 STATUS_CODE_SAFETY_PLAN="$ROOT_DIR/docs/plans/2026-06-16-rejection-status-code-safety.md"
 FINAL_STATUS_SEMANTICS_PLAN="$ROOT_DIR/docs/plans/2026-06-16-final-rejection-status-semantics.md"
 ERROR_CLASS_STATUS_PLAN="$ROOT_DIR/docs/plans/2026-06-18-rejection-error-class-status.md"
+CANONICAL_IP_DESIGN="$ROOT_DIR/docs/plans/2026-06-26-canonical-ip-identity-design.md"
+CANONICAL_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-26-canonical-ip-identity.md"
+CANONICAL_IP_MUTATIONS="$ROOT_DIR/scripts/test-canonical-ip-mutations.py"
 
 require_file() {
   path=$1
@@ -57,6 +60,7 @@ for path in \
   "errors/errors.go" \
   "libstring/libstring.go" \
   "libstring/libstring_test.go" \
+  "scripts/test-canonical-ip-mutations.py" \
   "docs/plans/2026-06-08-go-module-baseline.md" \
   "docs/plans/2026-06-09-ipv6-remote-addr.md" \
   "docs/plans/2026-06-09-make-gate-aliases.md" \
@@ -83,6 +87,8 @@ for path in \
   "docs/plans/2026-06-16-rejection-status-code-safety.md" \
   "docs/plans/2026-06-16-final-rejection-status-semantics.md" \
   "docs/plans/2026-06-18-rejection-error-class-status.md" \
+  "docs/plans/2026-06-26-canonical-ip-identity-design.md" \
+  "docs/plans/2026-06-26-canonical-ip-identity.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -128,6 +134,7 @@ if command -v go >/dev/null 2>&1; then
   (cd "$ROOT_DIR" && go vet ./...)
   (cd "$ROOT_DIR" && go test -race ./...)
   (cd "$ROOT_DIR" && go mod tidy -diff)
+  python3 "$CANONICAL_IP_MUTATIONS"
 else
   printf '%s\n' "go is required for go-ratelimiter verification." >&2
   exit 1
@@ -164,10 +171,37 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPFallsBackAfterBlankForwardedFor" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPSkipsMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
-  ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go"; then
+  ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestRemoteIPCanonicalizesEquivalentIPv6Forms" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestLimitHandlerSharesBucketAcrossEquivalentIPv6Forms" "$ROOT_DIR/limiter_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
   exit 1
 fi
+
+if [ "$(grep -Fc 'return ip.String()' "$ROOT_DIR/libstring/libstring.go")" -ne 2 ] ||
+  ! grep -Fq '2001:0db8:0:0:0:0:0:1' "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq 'equivalent IPv6 response status' "$ROOT_DIR/limiter_test.go"; then
+  printf '%s\n' "Validated request IPs must use one canonical limiter identity." >&2
+  exit 1
+fi
+
+canonical_ip_guidance='Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.'
+for canonical_ip_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "$canonical_ip_guidance" "$ROOT_DIR/$canonical_ip_doc"; then
+    printf '%s\n' "$canonical_ip_doc must document canonical IP identity." >&2
+    exit 1
+  fi
+done
+
+for canonical_ip_plan in "$CANONICAL_IP_DESIGN" "$CANONICAL_IP_PLAN"; do
+  if [ "$(grep -c '^status: completed$' "$canonical_ip_plan" || true)" -ne 1 ] ||
+    ! grep -Fq 'Go 1.25.11' "$canonical_ip_plan" ||
+    ! grep -Fq 'make check' "$canonical_ip_plan" ||
+    ! grep -Fq 'two canonical IP hostile mutations' "$canonical_ip_plan"; then
+    printf '%s\n' "Canonical IP plans must record completed local verification." >&2
+    exit 1
+  fi
+done
 
 if ! grep -Fq "limitMethods := len(limiter.Methods) > 0" "$ROOT_DIR/limiter.go" ||
   ! grep -Fq "limitHeaders := len(limiter.Headers) > 0" "$ROOT_DIR/limiter.go" ||

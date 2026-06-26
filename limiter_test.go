@@ -256,6 +256,29 @@ func TestLimitFuncHandlerReturnsTooManyRequestsAfterBucketIsEmpty(t *testing.T) 
 	}
 }
 
+func TestLimitHandlerSharesBucketAcrossEquivalentIPv6Forms(t *testing.T) {
+	limiter := NewLimiter(1, time.Hour)
+	handler := LimitFuncHandler(limiter, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	firstRequest := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	firstRequest.RemoteAddr = "[2001:0db8:0:0:0:0:0:1]:54321"
+	first := httptest.NewRecorder()
+	handler.ServeHTTP(first, firstRequest)
+	if first.Code != http.StatusNoContent {
+		t.Fatalf("first response status = %d, want %d", first.Code, http.StatusNoContent)
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	secondRequest.RemoteAddr = "[2001:db8::1]:54321"
+	second := httptest.NewRecorder()
+	handler.ServeHTTP(second, secondRequest)
+	if second.Code != http.StatusTooManyRequests {
+		t.Fatalf("equivalent IPv6 response status = %d, want %d", second.Code, http.StatusTooManyRequests)
+	}
+}
+
 func TestLimitHandlerChargesDuplicateConfiguredHeaderValueOnce(t *testing.T) {
 	limiter := NewLimiter(1, time.Hour)
 	limiter.Headers = map[string][]string{"X-Plan": {"gold", "gold"}}
