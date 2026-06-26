@@ -31,6 +31,7 @@ FINAL_STATUS_SEMANTICS_PLAN="$ROOT_DIR/docs/plans/2026-06-16-final-rejection-sta
 ERROR_CLASS_STATUS_PLAN="$ROOT_DIR/docs/plans/2026-06-18-rejection-error-class-status.md"
 CANONICAL_IP_DESIGN="$ROOT_DIR/docs/plans/2026-06-26-canonical-ip-identity-design.md"
 CANONICAL_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-26-canonical-ip-identity.md"
+SCOPED_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-26-scoped-ipv6-identity.md"
 CANONICAL_IP_MUTATIONS="$ROOT_DIR/scripts/test-canonical-ip-mutations.py"
 
 require_file() {
@@ -89,6 +90,7 @@ for path in \
   "docs/plans/2026-06-18-rejection-error-class-status.md" \
   "docs/plans/2026-06-26-canonical-ip-identity-design.md" \
   "docs/plans/2026-06-26-canonical-ip-identity.md" \
+  "docs/plans/2026-06-26-scoped-ipv6-identity.md" \
   "docs/plans/2026-06-08-header-value-matching.md"; do
   require_file "$path"
 done
@@ -173,13 +175,18 @@ if ! grep -Fq "TestBuildKeysDefaultUsesRemoteIPAndPath" "$ROOT_DIR/limiter_test.
   ! grep -Fq "TestRemoteIPFallsBackAfterMalformedRemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPHandlesIPv6RemoteAddr" "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq "TestRemoteIPCanonicalizesEquivalentIPv6Forms" "$ROOT_DIR/libstring/libstring_test.go" ||
-  ! grep -Fq "TestLimitHandlerSharesBucketAcrossEquivalentIPv6Forms" "$ROOT_DIR/limiter_test.go"; then
+  ! grep -Fq "TestRemoteIPCanonicalizesScopedIPv6AcrossLookups" "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq "TestLimitHandlerSharesBucketAcrossEquivalentIPv6Forms" "$ROOT_DIR/limiter_test.go" ||
+  ! grep -Fq "TestLimitHandlerSharesBucketAcrossEquivalentScopedIPv6Forms" "$ROOT_DIR/limiter_test.go"; then
   printf '%s\n' "Limiter and IP lookup behavior must stay covered by focused tests." >&2
   exit 1
 fi
 
-if [ "$(grep -Fc 'return ip.String()' "$ROOT_DIR/libstring/libstring.go")" -ne 2 ] ||
+if ! grep -Fq '"net/netip"' "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq 'addr, err := netip.ParseAddr(s)' "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq 'return addr.Unmap().String()' "$ROOT_DIR/libstring/libstring.go" ||
   ! grep -Fq '2001:0db8:0:0:0:0:0:1' "$ROOT_DIR/libstring/libstring_test.go" ||
+  ! grep -Fq 'fe80:0:0:0:0:0:0:1%eth0' "$ROOT_DIR/libstring/libstring_test.go" ||
   ! grep -Fq 'equivalent IPv6 response status' "$ROOT_DIR/limiter_test.go"; then
   printf '%s\n' "Validated request IPs must use one canonical limiter identity." >&2
   exit 1
@@ -192,6 +199,22 @@ for canonical_ip_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
     exit 1
   fi
 done
+
+scoped_ipv6_guidance='Scoped IPv6 addresses retain their zone and consume limiter buckets across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.'
+for scoped_ipv6_doc in AGENTS.md README.md SECURITY.md VISION.md CHANGES.md; do
+  if ! grep -Fq "$scoped_ipv6_guidance" "$ROOT_DIR/$scoped_ipv6_doc"; then
+    printf '%s\n' "$scoped_ipv6_doc must document scoped IPv6 limiter identity." >&2
+    exit 1
+  fi
+done
+
+if [ "$(grep -c '^status: completed$' "$SCOPED_IPV6_PLAN" || true)" -ne 1 ] ||
+  ! grep -Fq 'Go 1.25.11' "$SCOPED_IPV6_PLAN" ||
+  ! grep -Fq 'canonical-text and stripped-zone hostile mutations' "$SCOPED_IPV6_PLAN" ||
+  ! grep -Fq 'external-directory `make check`' "$SCOPED_IPV6_PLAN"; then
+  printf '%s\n' "Scoped IPv6 plan must record completed verification evidence." >&2
+  exit 1
+fi
 
 for canonical_ip_plan in "$CANONICAL_IP_DESIGN" "$CANONICAL_IP_PLAN"; do
   if [ "$(grep -c '^status: completed$' "$canonical_ip_plan" || true)" -ne 1 ] ||
@@ -281,14 +304,14 @@ if ! grep -Fq "TestLimiterStoresBoundedKeyIdentifiers" "$ROOT_DIR/config/config_
 fi
 
 if ! grep -Fq "net.SplitHostPort" "$ROOT_DIR/libstring/libstring.go" ||
-  ! grep -Fq "net.ParseIP(host)" "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq "canonicalIP(host)" "$ROOT_DIR/libstring/libstring.go" ||
   ! grep -Fq "ipAddrFromRemoteAddr(r.RemoteAddr); ip != \"\"" "$ROOT_DIR/libstring/libstring.go"; then
   printf '%s\n' "RemoteAddr parsing must use net.SplitHostPort and skip malformed IPs before deriving keys." >&2
   exit 1
 fi
 
 if ! grep -Fq "func ipAddrFromForwardedFor" "$ROOT_DIR/libstring/libstring.go" ||
-  ! grep -Fq "net.ParseIP" "$ROOT_DIR/libstring/libstring.go" ||
+  ! grep -Fq "canonicalIP(value)" "$ROOT_DIR/libstring/libstring.go" ||
   ! grep -Fq "ipAddrFromHeaderValue(part)" "$ROOT_DIR/libstring/libstring.go"; then
   printf '%s\n' "X-Forwarded-For parsing must skip blank and malformed entries before deriving keys." >&2
   exit 1

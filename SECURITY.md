@@ -37,6 +37,7 @@ For web services, APIs, sockets, or scraping workflows, prioritize reports invol
 Malformed RemoteAddr values should be skipped before limiter keys are derived
 so later configured lookup sources can still be used.
 Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
+Scoped IPv6 addresses retain their zone and consume limiter buckets across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
 Configured header value matching should inspect all request header values so a
 blank first header value cannot bypass a later configured match.
 Blank configured header values should not produce limiter keys with empty

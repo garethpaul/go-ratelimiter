@@ -60,6 +60,7 @@ derives request keys and applies in-memory token-bucket rate limits.
 - Malformed proxy IP headers are skipped before limiter keys are derived, allowing later configured lookup sources to be used.
 - `RemoteAddr` parsing supports IPv4 and IPv6 host:port values before deriving limiter keys.
 - Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
+- Scoped IPv6 addresses retain their zone and consume limiter buckets across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
 - Keep request-derived storage bounded by both the 10,000-key LRU cap and the
   fixed-length SHA-256 storage identifier.
 - Keep key component encoding length-prefixed so delimiter-containing values do

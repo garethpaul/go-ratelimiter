@@ -108,6 +108,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - `RemoteAddr` parsing supports IPv4 and IPv6 host:port values before deriving
   limiter keys.
 - Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
+- Scoped IPv6 addresses retain their zone and consume limiter buckets across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
 - Malformed RemoteAddr values are skipped before limiter keys are derived,
   allowing later configured lookup sources to be used.
 - Configured header values only contribute keys when the request header contains one of those configured values.
