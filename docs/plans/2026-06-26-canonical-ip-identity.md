@@ -63,4 +63,9 @@ status: completed
 - Green: focused and full tests pass on Go 1.25.11.
 - Repository-root and external-directory `make check` pass with race tests,
   vet, module-integrity checks, and two canonical IP hostile mutations rejected.
-- Pending: hosted checks, CodeQL, exact-head review, and merge verification.
+- Implementation head `a839b8b3304feec5319fb91a02409cfd012b0c7b` passes hosted
+  push and pull-request checks (`28245972824`, `28245975267`) and CodeQL
+  (`28245973551`).
+- `codex review --base origin/master` was attempted and skipped after HTTP 401
+  authentication errors.
+- Pending: evidence-only final-head hosted checks and merge verification.

@@ -35,7 +35,11 @@ Validation:
 - Green focused tests pass on Go 1.25.11.
 - Repository-root and external-directory `make check` pass on Go 1.25.11 with
   race tests, vet, module-integrity checks, and two canonical IP hostile mutations.
-- Hosted checks, CodeQL, and review are pending.
+- Implementation head `a839b8b3304feec5319fb91a02409cfd012b0c7b` passed hosted
+  push and pull-request checks (`28245972824`, `28245975267`) and CodeQL
+  (`28245973551`).
+- `codex review --base origin/master` was attempted and skipped after HTTP 401
+  authentication errors, per the maintenance loop policy.
 
 Bugs and findings:
 
@@ -45,11 +49,12 @@ Bugs and findings:
 
 Blockers:
 
-- None for local implementation.
+- Codex review authentication is unavailable; all executable local and hosted
+  gates are green.
 
 Next action:
 
-- Push the focused PR, then verify hosted checks and the exact final head.
+- Verify the evidence-only final PR head, then merge that exact commit.
 
 - Limiter rejection status codes outside 400 through 599 fall back to 429; configured client and server error codes remain unchanged.
 - Documented and regression-tested middleware-owned custom rejection responses

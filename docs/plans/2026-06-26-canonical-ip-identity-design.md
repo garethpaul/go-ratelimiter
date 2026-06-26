@@ -47,4 +47,8 @@ malformed-value fallback, and trusted-proxy configuration unchanged.
 - Focused canonicalization and shared-bucket tests pass on Go 1.25.11.
 - Repository-root and external-directory `make check` pass with race tests,
   vet, module-integrity checks, and two canonical IP hostile mutations rejected.
-- Hosted checks, CodeQL, exact-head review, and merge verification are pending.
+- Implementation head `a839b8b3304feec5319fb91a02409cfd012b0c7b` passes hosted
+  push and pull-request checks (`28245972824`, `28245975267`) and CodeQL
+  (`28245973551`).
+- Codex review was attempted and skipped after HTTP 401 authentication errors.
+- The evidence-only final head still requires hosted verification before merge.
