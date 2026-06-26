@@ -22,6 +22,7 @@ Priority:
 - Refill `Max` tokens per `TTL` and fail closed for invalid limit configuration
 - Keep middleware-owned response metadata single-valued and authoritative
 - Maintain clear examples for proxy-aware and IPv6 RemoteAddr IP lookup
+- Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
 - Preserve configured header matching when a request has a blank first header value
 - Preserve one token charge when duplicate configured header values match
 - Preserve available bucket capacity when another key rejects a multi-key request

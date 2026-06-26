@@ -107,6 +107,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
   allowing later configured lookup sources to be used.
 - `RemoteAddr` parsing supports IPv4 and IPv6 host:port values before deriving
   limiter keys.
+- Equivalent textual IP addresses share one canonical limiter identity across `RemoteAddr`, `X-Forwarded-For`, and `X-Real-IP`.
 - Malformed RemoteAddr values are skipped before limiter keys are derived,
   allowing later configured lookup sources to be used.
 - Configured header values only contribute keys when the request header contains one of those configured values.
@@ -140,6 +141,9 @@ When the required SDK or runtime is unavailable, use static checks and source re
   target guardrails.
 - See `docs/plans/2026-06-09-malformed-remote-addr.md` for direct RemoteAddr
   validation.
+- See `docs/plans/2026-06-26-canonical-ip-identity-design.md` and
+  `docs/plans/2026-06-26-canonical-ip-identity.md` for canonical request-IP
+  identity across supported lookup sources.
 - See `docs/plans/2026-06-14-empty-config-fallback.md` for empty constraint
   collection fallback behavior.
 - See `docs/plans/2026-06-15-direct-limiter-construction.md` for safe private

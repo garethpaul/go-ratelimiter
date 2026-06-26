@@ -1,6 +1,7 @@
 package libstring
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -110,6 +111,48 @@ func TestRemoteIPHandlesIPv6RemoteAddr(t *testing.T) {
 		if got != "2001:db8::1" {
 			t.Fatalf("RemoteIP(%q) = %q, want IPv6 host", remoteAddr, got)
 		}
+	}
+}
+
+func TestRemoteIPCanonicalizesEquivalentIPv6Forms(t *testing.T) {
+	tests := []struct {
+		name      string
+		lookups   []string
+		configure func(*http.Request)
+	}{
+		{
+			name:    "RemoteAddr",
+			lookups: []string{"RemoteAddr"},
+			configure: func(request *http.Request) {
+				request.RemoteAddr = "[2001:0db8:0:0:0:0:0:1]:1234"
+			},
+		},
+		{
+			name:    "X-Forwarded-For",
+			lookups: []string{"X-Forwarded-For"},
+			configure: func(request *http.Request) {
+				request.Header.Set("X-Forwarded-For", "2001:0db8:0:0:0:0:0:1, 198.51.100.7")
+			},
+		},
+		{
+			name:    "X-Real-IP",
+			lookups: []string{"X-Real-IP"},
+			configure: func(request *http.Request) {
+				request.Header.Set("X-Real-IP", "2001:0db8:0:0:0:0:0:1")
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest("GET", "/", nil)
+			test.configure(request)
+
+			got := RemoteIP(test.lookups, request)
+			if got != "2001:db8::1" {
+				t.Fatalf("RemoteIP = %q, want canonical IPv6 address", got)
+			}
+		})
 	}
 }
 

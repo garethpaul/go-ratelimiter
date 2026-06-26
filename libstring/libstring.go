@@ -22,18 +22,20 @@ func ipAddrFromRemoteAddr(s string) string {
 	if err != nil {
 		host = strings.Trim(s, "[]")
 	}
-	if net.ParseIP(host) == nil {
+	ip := net.ParseIP(host)
+	if ip == nil {
 		return ""
 	}
-	return host
+	return ip.String()
 }
 
 func ipAddrFromHeaderValue(s string) string {
-	ip := strings.Trim(strings.TrimSpace(s), "[]")
-	if net.ParseIP(ip) == nil {
+	value := strings.Trim(strings.TrimSpace(s), "[]")
+	ip := net.ParseIP(value)
+	if ip == nil {
 		return ""
 	}
-	return ip
+	return ip.String()
 }
 
 func ipAddrFromForwardedFor(s string) string {
