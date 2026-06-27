@@ -41,6 +41,10 @@ derives request keys and applies in-memory token-bucket rate limits.
   `libstring/libstring_test.go`, and `limiter_test.go`.
 - Hosted CI runs formatting, vet, race-enabled tests, module-integrity checks,
   and static policy checks through `make check`.
+- Absolute Makefile invocation must keep working from external directories and
+  from checkout paths containing spaces.
+- Verification must reject caller-supplied `MAKEFILES` and `MAKEFILE_LIST`
+  authority before running repository recipes.
 - Start with the narrowest relevant test or Make target, then run `make check` before handing off if the change is not documentation-only.
 - Keep README verification notes in sync when commands, fixtures, or supported toolchains change.
 

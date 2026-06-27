@@ -1,5 +1,53 @@
 # Changes
 
+## 2026-06-26 18:14 PDT - P2 - Spaced Makefile paths
+
+### Summary
+
+- Preserved the repository root when an absolute Makefile is loaded from
+  spaced checkout paths under GNU Make 4.2 and 4.4.
+- Added a recursive-safe full-gate regression that invokes the absolute
+  Makefile from an external directory under a spaced checkout path.
+- Made Go formatting discovery null-delimited so repository paths are not
+  split before `gofmt` receives them.
+
+### Files changed
+
+- `Makefile` — resolves one validated loaded Makefile without tokenizing its
+  path and rejects `MAKEFILES` or `MAKEFILE_LIST` authority injection.
+- `scripts/check-baseline.sh` and `scripts/test-make-spaced-path.py` — preserve
+  Go paths and exercise spaced-root plus hostile startup behavior.
+- `AGENTS.md`, `README.md`, and
+  `docs/plans/2026-06-13-location-independent-make.md` — synchronized guidance
+  and completed evidence.
+
+### Validation
+
+- The pre-change gate failed from a spaced checkout, first during root
+  resolution and then at whitespace-splitting `gofmt` discovery.
+- Hosted Go checks cover formatting, vet, race-enabled tests, build, module
+  integrity, the recursive spaced-path gate, and hostile startup rejection.
+- Local parser reproduction confirms the spaced absolute path resolves exactly;
+  hostile `MAKEFILES` and `MAKEFILE_LIST` inputs fail before recipes run. Full
+  local Go execution is unavailable because Go is not installed here.
+
+### Bugs / findings
+
+- Replacing every `MAKEFILE_LIST` space with one sentinel also collapsed
+  separators between multiple loaded files, producing a concatenated false
+  root. Validated single-file resolution now fails closed instead.
+
+### Blockers
+
+- The exact Go 1.25.11 runtime matrix is hosted-only in this environment.
+- `codex review --base origin/master` returned HTTP 401 before analysis, so the
+  authentication-only review attempt was skipped after one invocation.
+
+### Next action
+
+- Review the refreshed exact PR head and merge only after every hosted check is
+  green.
+
 ## 2026-06-26 - Scoped IPv6 limiter identities
 
 - Fixed valid scoped IPv6 addresses that previously produced no request keys

@@ -33,6 +33,7 @@ CANONICAL_IP_DESIGN="$ROOT_DIR/docs/plans/2026-06-26-canonical-ip-identity-desig
 CANONICAL_IP_PLAN="$ROOT_DIR/docs/plans/2026-06-26-canonical-ip-identity.md"
 SCOPED_IPV6_PLAN="$ROOT_DIR/docs/plans/2026-06-26-scoped-ipv6-identity.md"
 CANONICAL_IP_MUTATIONS="$ROOT_DIR/scripts/test-canonical-ip-mutations.py"
+MAKE_SPACE_TEST="$ROOT_DIR/scripts/test-make-spaced-path.py"
 
 require_file() {
   path=$1
@@ -62,6 +63,7 @@ for path in \
   "libstring/libstring.go" \
   "libstring/libstring_test.go" \
   "scripts/test-canonical-ip-mutations.py" \
+  "scripts/test-make-spaced-path.py" \
   "docs/plans/2026-06-08-go-module-baseline.md" \
   "docs/plans/2026-06-09-ipv6-remote-addr.md" \
   "docs/plans/2026-06-09-make-gate-aliases.md" \
@@ -95,9 +97,17 @@ for path in \
   require_file "$path"
 done
 
-if ! grep -Fq 'override ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))' "$ROOT_DIR/Makefile" ||
+if ! grep -Fq 'MAKEFILES must be empty; repository verification requires this Makefile to be loaded alone' "$ROOT_DIR/Makefile" ||
+  ! grep -Fq 'MAKEFILE_LIST must not be overridden' "$ROOT_DIR/Makefile" ||
+  ! grep -Fq 'override ROOT := $(shell path=' "$ROOT_DIR/Makefile" ||
+  ! grep -Fq 'repository Makefile path could not be resolved' "$ROOT_DIR/Makefile" ||
   ! grep -Fq '"$(ROOT)/scripts/check-baseline.sh"' "$ROOT_DIR/Makefile"; then
   printf '%s\n' "Makefile verification must resolve the checker from the loaded Makefile." >&2
+  exit 1
+fi
+
+if ! grep -Fq -- "-print0 | xargs -0 gofmt -l" "$ROOT_DIR/scripts/check-baseline.sh"; then
+  printf '%s\n' "Go formatting verification must preserve spaced checkout paths." >&2
   exit 1
 fi
 
@@ -108,7 +118,10 @@ if ! grep -Fq "status: completed" "$LOCATION_INDEPENDENT_MAKE_PLAN" ||
   ! grep -Fq "plan-status mutation failed" "$LOCATION_INDEPENDENT_MAKE_PLAN" ||
   ! grep -Fq "plan-evidence mutation failed" "$LOCATION_INDEPENDENT_MAKE_PLAN" ||
   ! grep -Fq "documentation mutation failed" "$LOCATION_INDEPENDENT_MAKE_PLAN" ||
+  ! grep -Fq "spaced checkout" "$LOCATION_INDEPENDENT_MAKE_PLAN" ||
   ! grep -Fq "absolute Makefile path" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "checkout path contains spaces" "$ROOT_DIR/README.md" ||
+  ! grep -Fq "spaced checkout paths" "$ROOT_DIR/CHANGES.md" ||
   ! grep -Fq "Made Go verification independent" "$ROOT_DIR/CHANGES.md"; then
   printf '%s\n' "Location-independent Make plan and guidance must record completed external verification." >&2
   exit 1
@@ -127,7 +140,7 @@ if ! grep -Fxq "go 1.25.11" "$ROOT_DIR/go.mod"; then
 fi
 
 if command -v go >/dev/null 2>&1; then
-  unformatted=$(find "$ROOT_DIR" -name '*.go' -not -path "$ROOT_DIR/.git/*" -print | xargs gofmt -l)
+  unformatted=$(find "$ROOT_DIR" -name '*.go' -not -path "$ROOT_DIR/.git/*" -print0 | xargs -0 gofmt -l)
   if [ -n "$unformatted" ]; then
     printf '%s\n' "Go files need gofmt:" >&2
     printf '%s\n' "$unformatted" >&2
@@ -137,6 +150,7 @@ if command -v go >/dev/null 2>&1; then
   (cd "$ROOT_DIR" && go test -race ./...)
   (cd "$ROOT_DIR" && go mod tidy -diff)
   python3 "$CANONICAL_IP_MUTATIONS"
+  python3 "$MAKE_SPACE_TEST"
 else
   printf '%s\n' "go is required for go-ratelimiter verification." >&2
   exit 1
