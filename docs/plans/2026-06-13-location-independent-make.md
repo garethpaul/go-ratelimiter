@@ -17,7 +17,8 @@ directories. The checker already roots all Go commands internally.
 ## Scope
 
 1. Derive the repository root from `MAKEFILE_LIST`.
-2. Preserve spaces before Make list functions select the loaded Makefile.
+2. Resolve the one loaded Makefile as a validated whole path without Make list
+   tokenization, and reject startup-variable authority injection.
 3. Invoke `scripts/check-baseline.sh` through its repository-rooted path.
 4. Add rooted-Makefile, completed-plan, external-run, and synchronized-guidance
    contracts.
@@ -44,8 +45,9 @@ caller-relative recipe; no runtime state or persistent migration exists.
 
 - Derived the repository root from the loaded Makefile and invoked the existing
   checker through its absolute repository path.
-- Protected spaces with a sentinel while selecting and resolving the loaded
-  Makefile, then restored them in the final repository root.
+- Resolved the loaded Makefile as one shell-quoted path, rejected `MAKEFILES`
+  and `MAKEFILE_LIST` authority injection, and failed closed when the path did
+  not identify exactly one file.
 - Extended the baseline with rooted-Makefile, completed-plan, external-run, and
   synchronized-guidance contracts.
 - Preserved limiter behavior, tests, module files, workflow policy, and Go
@@ -58,6 +60,8 @@ caller-relative recipe; no runtime state or persistent migration exists.
   passed at repository root and from /tmp through the absolute Makefile path.
 - The full gate passed from an external directory through an absolute Makefile
   path inside a spaced checkout on GNU Make 4.2 and 4.4.
+- Hostile `MAKEFILES` and `MAKEFILE_LIST` startup inputs failed before any
+  verification recipe ran.
 - The root-derivation mutation failed.
 - The checker-command mutation failed.
 - The plan-status mutation failed.

@@ -97,9 +97,10 @@ for path in \
   require_file "$path"
 done
 
-if ! grep -Fq 'override makefile_space := __GO_RATELIMITER_MAKEFILE_SPACE__' "$ROOT_DIR/Makefile" ||
-  ! grep -Fq 'override encoded_makefile_list := $(patsubst $(makefile_space)%,%,$(subst $(space),$(makefile_space),$(MAKEFILE_LIST)))' "$ROOT_DIR/Makefile" ||
-  ! grep -Fq 'override ROOT := $(subst $(makefile_space),$(space),$(abspath $(dir $(lastword $(encoded_makefile_list)))))' "$ROOT_DIR/Makefile" ||
+if ! grep -Fq 'MAKEFILES must be empty; repository verification requires this Makefile to be loaded alone' "$ROOT_DIR/Makefile" ||
+  ! grep -Fq 'MAKEFILE_LIST must not be overridden' "$ROOT_DIR/Makefile" ||
+  ! grep -Fq 'override ROOT := $(shell path=' "$ROOT_DIR/Makefile" ||
+  ! grep -Fq 'repository Makefile path could not be resolved' "$ROOT_DIR/Makefile" ||
   ! grep -Fq '"$(ROOT)/scripts/check-baseline.sh"' "$ROOT_DIR/Makefile"; then
   printf '%s\n' "Makefile verification must resolve the checker from the loaded Makefile." >&2
   exit 1
