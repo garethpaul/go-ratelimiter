@@ -1,5 +1,14 @@
 # Changes
 
+## 2026-06-27 - Spaced Makefile paths
+
+- Preserved the repository root when an absolute Makefile is loaded from
+  spaced checkout paths under GNU Make 4.2 and 4.4.
+- Added a recursive-safe full-gate regression that invokes the absolute
+  Makefile from an external directory under a spaced checkout path.
+- Made Go formatting discovery null-delimited so repository paths are not
+  split before `gofmt` receives them.
+
 ## 2026-06-26 - Scoped IPv6 limiter identities
 
 - Fixed valid scoped IPv6 addresses that previously produced no request keys

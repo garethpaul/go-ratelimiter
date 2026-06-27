@@ -17,18 +17,20 @@ directories. The checker already roots all Go commands internally.
 ## Scope
 
 1. Derive the repository root from `MAKEFILE_LIST`.
-2. Invoke `scripts/check-baseline.sh` through its repository-rooted path.
-3. Add rooted-Makefile, completed-plan, external-run, and synchronized-guidance
+2. Preserve spaces before Make list functions select the loaded Makefile.
+3. Invoke `scripts/check-baseline.sh` through its repository-rooted path.
+4. Add rooted-Makefile, completed-plan, external-run, and synchronized-guidance
    contracts.
-4. Reject root, checker, plan-status, plan-evidence, and documentation
+5. Reject root, checker, plan-status, plan-evidence, and documentation
    mutations.
-5. Preserve limiter behavior, tests, module files, and workflow policy.
+6. Preserve limiter behavior, tests, module files, and workflow policy.
 
 ## Verification Plan
 
 - Run focused and full uncached tests, race tests, vet, module tidiness, all
   four Make gates, formatting, shell syntax, and `git diff --check`.
 - Run all four Make gates from /tmp through the absolute Makefile path.
+- Run the full gate through an absolute Makefile path inside a spaced checkout.
 - Reject isolated hostile mutations for root derivation, checker invocation,
   plan status/evidence, and documentation.
 - Inspect exact intended paths, secrets, and generated artifacts.
@@ -42,6 +44,8 @@ caller-relative recipe; no runtime state or persistent migration exists.
 
 - Derived the repository root from the loaded Makefile and invoked the existing
   checker through its absolute repository path.
+- Protected spaces with a sentinel while selecting and resolving the loaded
+  Makefile, then restored them in the final repository root.
 - Extended the baseline with rooted-Makefile, completed-plan, external-run, and
   synchronized-guidance contracts.
 - Preserved limiter behavior, tests, module files, workflow policy, and Go
@@ -52,6 +56,8 @@ caller-relative recipe; no runtime state or persistent migration exists.
 - Focused and full uncached tests, race tests, vet, and module tidiness passed.
 - All four Make gates (`make lint`, `make test`, `make build`, and `make check`)
   passed at repository root and from /tmp through the absolute Makefile path.
+- The full gate passed from an external directory through an absolute Makefile
+  path inside a spaced checkout on GNU Make 4.2 and 4.4.
 - The root-derivation mutation failed.
 - The checker-command mutation failed.
 - The plan-status mutation failed.
