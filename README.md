@@ -82,8 +82,7 @@ remain in place. Keep the exact guard phrases
 
 Use the absolute Makefile path to run the same gates from another working
 directory. Verification resolves the checker relative to the loaded Makefile
-rather than the caller's directory, including when the checkout path contains
-spaces.
+rather than the caller's directory, including when the checkout path contains spaces.
 GitHub Actions installs the exact Go version from `go.mod` and runs formatting,
 vet, race-enabled tests, module-integrity checks, and static guardrails. Tracked
 buckets use a 10,000-entry LRU cap and fixed-length SHA-256 identifiers, while
