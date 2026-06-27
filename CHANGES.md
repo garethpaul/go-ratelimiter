@@ -40,6 +40,8 @@
 ### Blockers
 
 - The exact Go 1.25.11 runtime matrix is hosted-only in this environment.
+- `codex review --base origin/master` returned HTTP 401 before analysis, so the
+  authentication-only review attempt was skipped after one invocation.
 
 ### Next action
 
